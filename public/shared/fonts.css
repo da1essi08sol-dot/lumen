@@ -1,0 +1,73 @@
+/* Lumen fonts (Settings › Personal › Fonts). Each style sets a few variables; the title rules below use them.
+   Loaded after theme-tv.css / theme-phone.css. A style applies to the whole page (html[data-font]) or, for the
+   preview in Settings, to one box ([data-fp]). */
+@font-face {
+  font-family: 'Lumen Sans'; src: url('/shared/fonts/bricolage.ttf') format('truetype');
+  font-weight: 200 800; font-stretch: 75% 100%; font-display: block;
+}
+:root, [data-fp] {
+  /* Classic: the original Lumen look (Windows' own Segoe UI), the default */
+  --bf: 'Segoe UI Variable Text', 'Segoe UI', -apple-system, system-ui, sans-serif;
+  --tf: 'Segoe UI Variable Display', 'Segoe UI', -apple-system, system-ui, sans-serif;
+  --tw: 700; --tst: 100%; --tls: -.025em; --tl: 1.02; --ts: .66;
+  --sw: 600; --sst: 100%;
+}
+:is(html[data-font="cinema"], [data-fp="cinema"]) {   /* Cinema: condensed and heavy (Lumen 2.0) */
+  --bf: 'Lumen Sans', 'Segoe UI', system-ui, sans-serif; --tf: 'Lumen Sans', 'Segoe UI', sans-serif;
+  --tw: 780; --tst: 76%; --tls: -.012em; --tl: .92; --ts: 1; --sw: 620; --sst: 88%;
+}
+:is(html[data-font="bold"], [data-fp="bold"]) {       /* Bold: the same new type at full width */
+  --bf: 'Lumen Sans', 'Segoe UI', system-ui, sans-serif; --tf: 'Lumen Sans', 'Segoe UI', sans-serif;
+  --tw: 760; --tst: 100%; --tls: -.032em; --tl: .98; --ts: .7; --sw: 620; --sst: 100%;
+}
+:is(html[data-font="signage"], [data-fp="signage"]) { /* Signage: Windows' road-sign font, tall and narrow */
+  --tf: 'Bahnschrift', 'Lumen Sans', 'Segoe UI', sans-serif;
+  --tw: 600; --tst: 75%; --tls: 0; --tl: .95; --ts: .9; --sw: 550; --sst: 87.5%;
+}
+:is(html[data-font="serif"], [data-fp="serif"]) {     /* Serif: like a film poster or a book cover */
+  --tf: Georgia, 'Times New Roman', serif;
+  --tw: 700; --tst: 100%; --tls: -.012em; --tl: 1.04; --ts: .66; --sw: 700; --sst: 100%;
+}
+
+/* ---------- the TV ---------- */
+body { font-family: var(--bf); }
+.tv :is(.hero h1, .detail h1, .page-head h1, .welcome h1, .error-box h2, .sheet h2, #external h2, #external .opening h2, .fallback b) {
+  font-family: var(--tf); font-weight: var(--tw); font-stretch: var(--tst); letter-spacing: var(--tls);
+}
+.tv :is(.hero h1, .detail h1) { line-height: var(--tl); }
+.tv .hero h1 { font-size: calc(7rem * var(--ts)); }
+.tv .detail h1 { font-size: calc(7.4rem * var(--ts)); }
+.tv .page-head h1 { font-size: calc(5rem * var(--ts) + .6rem); }
+.tv .welcome h1 { font-size: calc(6rem * var(--ts) + .4rem); }
+.tv .sheet h2 { font-size: calc(3rem * var(--ts) + .3rem); }
+.tv :is(.row h2, .settings h3, #clock .t, .folder-tile .label b, .upnext b, #player .ptitle, .empty b, .episode h3) {
+  font-family: var(--tf); font-weight: var(--sw); font-stretch: var(--sst);
+}
+.tv .fallback b { font-size: calc(2.1rem * var(--ts) + .4rem); line-height: var(--tl); }
+.tv #player video::cue { font-family: var(--bf); }
+
+/* ---------- the phone and the remote ---------- */
+.ph :is(.bar h1, .hero h2, .detail h1, .pane h2, .pairing h1) { font-family: var(--tf); font-weight: var(--tw); font-stretch: var(--tst); letter-spacing: var(--tls); line-height: var(--tl); }
+.ph .hero h2 { font-size: calc(42px * var(--ts) + 6px); }
+.ph .detail h1 { font-size: calc(40px * var(--ts) + 6px); }
+.ph .bar h1 { font-size: calc(34px * var(--ts) + 6px); }
+
+/* ---------- the preview in Settings: a small copy of Home ---------- */
+.fp { position: relative; height: 30rem; border-radius: .8rem; overflow: hidden; margin: 1.4rem 0 1.6rem; font-family: var(--bf);
+  background: radial-gradient(70% 90% at 80% 20%, rgba(var(--acc), .28), transparent 60%), linear-gradient(160deg, #262a33 0%, #0d0e12 60%, #000 100%); }
+.fp-bd { position: absolute; inset: 0; background: center/cover no-repeat; opacity: .55; }
+.fp::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.85) 0%, rgba(0,0,0,.35) 55%, transparent), linear-gradient(0deg, #000 0%, transparent 45%); }
+.fp-copy { position: absolute; z-index: 1; left: 3rem; bottom: 9.5rem; width: 46rem; }
+.fp-greet { font-size: 1.15rem; color: var(--ink-2); margin-bottom: .3rem; }
+.fp-title { font-family: var(--tf); font-weight: var(--tw); font-stretch: var(--tst); letter-spacing: var(--tls); line-height: var(--tl);
+  font-size: calc(4.4rem * var(--ts)); margin: .3rem 0 .8rem; text-wrap: balance; color: var(--ink); }
+.fp-meta { font-size: 1rem; color: var(--ink-2); }
+.fp-btns { display: flex; gap: .7rem; margin-top: 1.2rem; }
+.fp-btns span { height: 2.8rem; padding: 0 1.2rem; display: inline-flex; align-items: center; border-radius: .45rem; font-size: 1rem; font-weight: 600; background: rgba(243,241,236,.1); }
+.fp-btns span:first-child { background: rgb(var(--acc)); color: var(--acc-ink); }
+.fp-row { position: absolute; z-index: 1; left: 3rem; right: 0; bottom: 1.4rem; }
+.fp-row b { display: block; font-family: var(--tf); font-weight: var(--sw); font-stretch: var(--sst); font-size: 1.15rem; margin-bottom: .6rem; color: var(--ink); }
+.fp-row div { display: flex; gap: .8rem; }
+.fp-row i { width: 9.5rem; height: 5.4rem; border-radius: .4rem; background: center/cover #1b1d22; flex: none; }
+.fp-pick { display: flex; gap: .6rem; flex-wrap: wrap; }
+.fp-pick .setting { flex: 1 1 0; min-width: 0; justify-content: center; text-align: center; min-height: 4rem; margin: 0; }

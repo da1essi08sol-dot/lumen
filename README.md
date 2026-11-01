@@ -32,12 +32,18 @@ Lumen sits in the system tray (bottom right, by the clock). From there you can s
 (handy when the laptop's own screen and the TV are both on), turn **Start Lumen when I sign in** on or off, check for
 updates, open the data folder, or quit. Closing the TV window (Alt + F4) only hides it; your phone can bring it back.
 
+## What's new in 2.0.1
+
+- **Fonts.** Settings › Personal › **Fonts** changes the look of every title: **Classic** (the original Lumen look, now the default
+  again), **Cinema** (the tall, condensed 2.0 look), **Bold**, **Signage** and **Serif**. Move left and right to see each one
+  on a small copy of Home before you choose. Your phone follows the TV.
+
 ## What's new in 2.0
 
 - **One app.** Lumen is now a normal Windows program with an installer: no Node.js, no scripts, no console windows.
   It starts faster, opens its own full-screen window, and updates itself.
 - **A new look.** A darkened-cinema design: the thing you're on is lit (your colour pools under it and the rest of the row dims),
-  big condensed titles, tabs with a bar of light, and new type throughout (TV and phone).
+  tabs with a bar of light, and a choice of fonts (Settings › Fonts).
 - **Sleep timer.** Settings › Sleep Timer, or the phone's Now Playing screen. The sound fades out over the last minute,
   whatever is playing stops, the screen turns off, and the volume goes back to normal for next time.
 - **Subtitles and audio languages** for videos on your computer: press **Down** while one plays. Lumen finds `.srt`/`.vtt` files

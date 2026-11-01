@@ -211,6 +211,41 @@ function applyPersonal() {
   root.style.setProperty('--acc', `${r}, ${g}, ${b}`);
   root.style.setProperty('--acc-ink', lum > 0.55 ? '#000' : '#fff'); // dark reds get white text
   root.dataset.accent = cfg.accent === 'white' || !cfg.accent ? 'white' : 'custom';
+  root.dataset.font = FONTS.some(([k]) => k === cfg.font) ? cfg.font : 'classic';
+}
+
+// ---- fonts (Settings › Personal › Fonts): the look of every title, previewed on a small copy of Home
+const FONTS = [['classic', 'Classic', 'The original Lumen look'], ['cinema', 'Cinema', 'Tall, condensed and heavy'], ['bold', 'Bold', 'The same new type, full width'],
+  ['signage', 'Signage', 'Narrow, like a road sign'], ['serif', 'Serif', 'Like a film poster']];
+const fontName = (k) => (FONTS.find(([x]) => x === k) || FONTS[0])[1];
+async function fontDialog() {
+  let d = null; try { d = await cached('section:home', () => api('/api/section/home'), 3 * 60e3); } catch {}
+  const hero = d?.hero?.find((i) => i.backdrop_path) || null;
+  const thumbs = (d?.rows || []).flatMap((r) => r.items || []).filter((i) => i.backdrop_path).slice(0, 6);
+  const cur = cfg.font || 'classic';
+  return new Promise((done) => {
+    const m = ui.modal(`<h2>Fonts</h2><p>Move left and right to try each one on Home. Press OK to use it.</p>
+      <div class="fp" data-fp="${esc(cur)}">${hero ? `<div class="fp-bd" style="background-image:url('${esc(img(hero.backdrop_path, 'w1280'))}')"></div>` : ''}
+        <div class="fp-copy"><div class="fp-greet">${esc(greeting().replace(/<[^>]+>/g, ''))}</div>
+          <div class="fp-title">${esc(hero?.title || 'The Golden Lantern')}</div>
+          <div class="fp-meta">${hero ? `${hero.type === 'tv' ? 'TV Show' : 'Film'}${hero.year ? ` · ${hero.year}` : ''}${hero.vote_average ? ` · ★ ${(+hero.vote_average).toFixed(1)}` : ''}` : 'Film · 2011 · ★ 7.5'}</div>
+          <div class="fp-btns"><span>Details</span><span>Add to Folder</span></div></div>
+        <div class="fp-row"><b>Trending Today</b><div>${(thumbs.length ? thumbs : Array(6).fill(null)).map((t) => `<i${t ? ` style="background-image:url('${esc(img(t.backdrop_path, 'w300'))}')"` : ''}></i>`).join('')}</div></div>
+      </div>
+      <div class="fp-pick" data-group="row"></div>`, { wide: true, onClose: () => done() });
+    const box = m.querySelector('.fp'), pick = m.querySelector('.fp-pick');
+    let first = null;
+    for (const [k, name, sub] of FONTS) {
+      const b = onSelect(el(`<div class="setting f" data-fp="${k}" data-k="${k}"><span><span style="font-family:var(--tf);font-weight:var(--tw);font-stretch:var(--tst);font-size:1.7rem;letter-spacing:var(--tls)">${esc(name)}</span><span class="sub">${esc(sub)}${k === cur ? ' · in use' : ''}</span></span></div>`), async () => {
+        cfg.font = k; applyPersonal();
+        await api('/api/settings', { method: 'POST', body: { font: k } }).catch((e) => ui.toast(e.message, 'info'));
+        ui.toast(`Fonts: ${name}`, 'check'); m.close();
+      });
+      b.addEventListener('nav-focus', () => (box.dataset.fp = k));
+      pick.appendChild(b); if (k === cur) first = b;
+    }
+    m.open(first);
+  });
 }
 function greeting() {
   const h = new Date().getHours();
@@ -929,6 +964,7 @@ function settingsView() {
       const next = keys[(keys.indexOf(cfg.accent) + 1) % keys.length]; // a custom colour moves on to the first preset
       cfg.accent = next; applyPersonal(); await save({ accent: next });
     }, 'Press to try the next: Moonlight, Amber, Rose, Mint, Sky, Lilac, Red, Scarlet, Crimson, Cherry, Coral');
+    item('Fonts', esc(fontName(cfg.font)), fontDialog, 'The look of titles across Lumen, with a preview of Home');
     item('Custom Colour', esc(/^#/.test(cfg.accent || '') ? cfg.accent.toUpperCase() : 'Hex code'), async () => {
       let v = await ui.promptDialog({ title: 'Custom Colour', text: 'Type a hex colour code, e.g. #B3001B for a deep red. Easier: the colour wheel on your phone’s Setup tab.', value: /^#/.test(cfg.accent || '') ? cfg.accent : '#', placeholder: '#B3001B', ok: 'Use Colour', mono: true });
       if (!v) return;

@@ -125,6 +125,7 @@ function render() {
   app.querySelector('.head .sub').textContent = !ws ? 'Connecting…' : state.tvConnected ? (state.external ? `${state.external.label} is on screen` : 'Connected') : 'TV interface is closed — tap “Show Lumen”';
   if (!app.querySelector('.vtrack.drag:not(.btrack)')) drawVolume();
   if (!app.querySelector('.btrack.drag')) drawBrightness();
+  if (state.font) document.documentElement.dataset.font = state.font; // and its fonts
   if (state.accent) { // follow the TV's colour
     const [r, g, b] = state.accent.split(',').map(Number);
     document.documentElement.style.setProperty('--acc', `${r},${g},${b}`);

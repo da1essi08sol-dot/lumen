@@ -465,6 +465,7 @@ function openFolder(f) {
 // ---------------------------------------------------------------- start
 async function start() {
   try { cfg = { ...cfg, ...(await api('/api/config')) }; } catch (e) { app.innerHTML = ''; app.appendChild(errorBox(e, start)); return; }
+  if (cfg.font) document.documentElement.dataset.font = cfg.font;
   if (cfg.accentRgb) {
     const [r, g, b] = cfg.accentRgb.split(',').map(Number);
     document.documentElement.style.setProperty('--acc', `${r},${g},${b}`);

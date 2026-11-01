@@ -18,6 +18,7 @@ function defaults() {
       watchLinks: [], // every Watch website: [{ id, pattern, name }] — each film shows a button for each
       userName: '',
       accent: 'white',
+      font: 'classic', // Settings › Personal › Fonts
       sound: { on: true, style: 'soft', volume: 0.6 },
       blockPopups: true,
       softwareDecode: false, // replaces the old 'smoothSkip', which was on by default and could hide the picture

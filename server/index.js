@@ -19,6 +19,7 @@ const PUBLIC = path.join(ROOT, 'public');
 const DATA = process.env.LUMEN_DATA || path.join(ROOT, 'data');
 const MOCK = process.env.LUMEN_MOCK === '1';
 const SHELL = global.lumenShell || null; // set when Lumen runs as the desktop app (electron/main.js)
+const FONTS = ['classic', 'cinema', 'bold', 'signage', 'serif']; // Settings › Personal › Fonts (see public/shared/fonts.css)
 const VERSION = (() => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version || '1.0.0'; } catch { return '1.0.0'; } })();
 const BG_DIR = path.join(DATA, 'backgrounds');
 fs.mkdirSync(BG_DIR, { recursive: true });
@@ -269,7 +270,7 @@ const tvs = new Set(), remotes = new Set();
 const live = { view: 'home', textInput: false, inPlayer: false, external: null, volume: null };
 const broadcastTv = (m) => tvs.forEach((w) => w.send(m));
 const broadcastRemotes = (m) => remotes.forEach((w) => w.send(m));
-const remoteState = () => ({ t: 'state', tvConnected: tvs.size > 0, view: live.view, textInput: live.textInput, inPlayer: live.inPlayer, external: system.external ? { kind: system.external.kind, label: system.external.label } : null, volume: live.volume, deviceName: S().deviceName, accent: accentRgb(), brightness: S().brightness?.level ?? 100, sleep: sleepInfo() });
+const remoteState = () => ({ t: 'state', tvConnected: tvs.size > 0, view: live.view, textInput: live.textInput, inPlayer: live.inPlayer, external: system.external ? { kind: system.external.kind, label: system.external.label } : null, volume: live.volume, deviceName: S().deviceName, accent: accentRgb(), font: S().font || 'classic', brightness: S().brightness?.level ?? 100, sleep: sleepInfo() });
 const pushState = () => broadcastRemotes(remoteState());
 
 system.on('external', (ext) => { live.external = ext; broadcastTv({ t: 'external', external: ext }); pushState(); });
@@ -431,7 +432,7 @@ async function route(req, res) {
     return send(res, 200, {
       version: VERSION, app: SHELL && local ? SHELL.info() : null, root: local ? ROOT : undefined, hasKey: !!s.tmdbKey || MOCK, mock: MOCK, imageBase: MOCK ? '/mock-img' : 'https://image.tmdb.org/t/p',
       region: s.region, deviceName: s.deviceName, services: s.services, serviceNames: Object.fromEntries(Object.entries(SERVICES).map(([k, v]) => [k, v.name])),
-      background: s.background, showClock: s.showClock, screensaver: s.screensaver !== false, reduceMotion: s.reduceMotion, shortcuts: s.shortcuts, watchLink: s.watchLink, watchLinks: watchLinks(), accentRgb: accentRgb(), homeBanner: s.homeBanner, homeBannerName: s.homeBanner?.source === 'folder' ? (store.d.folders.find((f) => f.id === s.homeBanner.folderId)?.name || null) : null, webBrowserInUse: webBrowser(), userName: s.userName, accent: s.accent, sound: s.sound, brightness: s.brightness, blockPopups: s.blockPopups, autoPlay: s.autoPlay, softwareDecode: s.softwareDecode === true, intro: s.intro, webBrowser: s.webBrowser, lanHost: lanHost(), port: PORT, system: system.info(),
+      background: s.background, showClock: s.showClock, screensaver: s.screensaver !== false, reduceMotion: s.reduceMotion, shortcuts: s.shortcuts, watchLink: s.watchLink, watchLinks: watchLinks(), accentRgb: accentRgb(), homeBanner: s.homeBanner, homeBannerName: s.homeBanner?.source === 'folder' ? (store.d.folders.find((f) => f.id === s.homeBanner.folderId)?.name || null) : null, webBrowserInUse: webBrowser(), userName: s.userName, accent: s.accent, font: FONTS.includes(s.font) ? s.font : 'classic', sound: s.sound, brightness: s.brightness, blockPopups: s.blockPopups, autoPlay: s.autoPlay, softwareDecode: s.softwareDecode === true, intro: s.intro, webBrowser: s.webBrowser, lanHost: lanHost(), port: PORT, system: system.info(),
       keyHint: s.tmdbKey ? '••••' + s.tmdbKey.slice(-4) : '',
     });
   }
@@ -492,6 +493,7 @@ async function route(req, res) {
     if (typeof b.blockPopups === 'boolean') s.blockPopups = b.blockPopups;
     if (typeof b.autoPlay === 'boolean') s.autoPlay = b.autoPlay;
     if (typeof b.userName === 'string') s.userName = b.userName.trim().slice(0, 24);
+    if (FONTS.includes(b.font)) s.font = b.font;
     if (typeof b.accent === 'string' && (ACCENTS[b.accent] || /^#[0-9a-f]{6}$/i.test(b.accent))) s.accent = b.accent.toLowerCase();
     if (b.sound && typeof b.sound === 'object') {
       const snd = { ...(s.sound || { on: true, style: 'soft', volume: 0.6 }) };

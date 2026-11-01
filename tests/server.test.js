@@ -66,3 +66,14 @@ test('home-network check', () => {
   for (const a of ['127.0.0.1', '192.168.1.20', '10.0.0.4', '172.20.1.1', '::ffff:192.168.0.9', 'fe80::1', 'fd12::5', '::1']) assert.ok(onHomeNetwork(a), a);
   for (const a of ['8.8.8.8', '81.2.69.160', '172.32.0.1', '2001:4860:4860::8888']) assert.ok(!onHomeNetwork(a), a);
 });
+
+test('the font style can be chosen, and anything unknown is ignored', async () => {
+  let c = await S.api('/api/config');
+  assert.strictEqual(c.json.font, 'classic');
+  await S.api('/api/settings', { method: 'POST', body: { font: 'serif' } });
+  c = await S.api('/api/config');
+  assert.strictEqual(c.json.font, 'serif');
+  await S.api('/api/settings', { method: 'POST', body: { font: 'comic-sans' } });
+  c = await S.api('/api/config');
+  assert.strictEqual(c.json.font, 'serif');
+});
