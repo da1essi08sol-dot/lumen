@@ -66,7 +66,7 @@ module.exports = function createUpdater({ app, pkg, log, broadcast }) {
     const d = fromDownloads(); if (d) found.push(d);
     const newest = found.filter((f) => cmp(f.version, pkg.version) > 0).sort((a, b) => cmp(b.version, a.version) || (a.source === 'downloads' ? -1 : 1))[0];
     last = newest
-      ? { supported: true, installed: pkg.version, found: true, version: newest.version, source: newest.source, name: newest.name, notes: newest.notes || '', zip: newest.name, _c: newest }
+      ? { supported: true, installed: pkg.version, found: true, newer: true, version: newest.version, source: newest.source, name: newest.name, notes: newest.notes || '', zip: newest.name, _c: newest }
       : { supported: true, installed: pkg.version, found: false, note: note || (validRepo ? '' : 'Automatic updates are not set up yet; Lumen looks in your Downloads folder.') };
     lastAt = Date.now();
     const { _c, ...pub } = last;

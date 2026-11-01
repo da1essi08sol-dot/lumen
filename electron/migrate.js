@@ -63,6 +63,19 @@ function oldAutostart(shell) {
   try { return /Start Lumen\.vbs/i.test(shell.readShortcutLink(l).args || ''); } catch { return false; }
 }
 
+// The older Lumen started itself at sign-in with a shortcut to "Start Lumen.vbs". Left in place it would start the
+// old server every time and clash with this one, so it's removed and the app's own "start when I sign in" takes over.
+function retireOldAutostart({ shell, log }) {
+  if (process.platform !== 'win32' || !shell?.readShortcutLink) return false;
+  const l = path.join(process.env.APPDATA || '', 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'Lumen.lnk');
+  try {
+    if (!/Start Lumen\.vbs/i.test(shell.readShortcutLink(l).args || '')) return false;
+    fs.rmSync(l, { force: true });
+    log('removed the older Lumen’s start-up shortcut; Lumen now starts itself at sign-in');
+    return true;
+  } catch { return false; }
+}
+
 function run({ DATA, oldRoot, log, shell }) {
   try {
     if (fs.existsSync(path.join(DATA, 'store.json'))) return null; // already has its own settings
@@ -88,4 +101,4 @@ function importFrom(dir, DATA, log) {
   } catch (e) { log('import failed:', e.message); return { ok: false, error: e.message }; }
 }
 
-module.exports = { run, importFrom, dataDirOf };
+module.exports = { run, importFrom, dataDirOf, retireOldAutostart };

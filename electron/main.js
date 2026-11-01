@@ -41,12 +41,14 @@ let prefs = {}; try { prefs = JSON.parse(fs.readFileSync(PREFS, 'utf8')); } catc
 const savePrefs = () => { try { fs.writeFileSync(PREFS, JSON.stringify(prefs, null, 2)); } catch {} };
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
+// lets the video player switch between audio languages in files that have several (Subtitles & Audio menu)
+app.commandLine.appendSwitch('enable-blink-features', 'AudioVideoTracks');
 
 // ---- bring over settings from the older, folder-based Lumen (1.x) the first time
 const migrate = require('./migrate');
 const oldRoot = (process.argv.find((a) => a.startsWith('--old-root=')) || '').slice(11) || null;
 const migrated = migrate.run({ DATA, oldRoot, log, shell });
-const autostartFromOld = process.argv.includes('--enable-autostart') || !!migrated?.autostart;
+const autostartFromOld = process.argv.includes('--enable-autostart') || !!migrated?.autostart || migrate.retireOldAutostart({ shell, log });
 
 // ---- updates
 const updater = require('./updater')({ app, pkg, log, broadcast: (m) => server?.broadcastTv(m) });
@@ -78,6 +80,7 @@ function createWindow() {
       for (const type of ['keyDown', 'keyUp']) win?.webContents.sendInputEvent({ type, keyCode: k });
     }, 5500 + i * 450));
   });
+  if (TEST && process.env.LUMEN_EVAL) win.webContents.once('did-finish-load', () => setTimeout(() => win?.webContents.executeJavaScript(process.env.LUMEN_EVAL).catch((e) => log('eval failed', e.message)), 5000));
   if (TEST && process.env.LUMEN_SHOT) win.webContents.once('did-finish-load', () => setTimeout(async () => {
     try { fs.writeFileSync(process.env.LUMEN_SHOT, (await win.webContents.capturePage()).toPNG()); log('saved', process.env.LUMEN_SHOT); } catch (e) { log('shot failed', e.message); }
     if (process.env.LUMEN_SHOT_QUIT !== '0') quit();
@@ -85,6 +88,7 @@ function createWindow() {
   // the TV screen stays on Lumen: links never take it to other websites (those open in Lumen's browser)
   win.webContents.on('will-navigate', (e, url) => { if (!url.startsWith(`http://localhost:${port}/`)) e.preventDefault(); });
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  if (TEST) win.webContents.on('console-message', (e) => { const lv = e.level ?? e.params?.level; if (lv === 'error' || lv === 3) log('page error:', e.message ?? e.params?.message); });
   win.webContents.on('render-process-gone', (_e, info) => { log('TV screen stopped:', info.reason, '— reloading'); setTimeout(() => win?.reload(), 800); });
   win.webContents.on('before-input-event', (e, input) => {
     if (input.type !== 'keyDown') return;
@@ -104,7 +108,11 @@ function showTv() {
   if (win.isMinimized()) win.restore();
   if (!win.isVisible()) win.show();
   if (!TEST) win.setFullScreen(true);
+  // Windows often refuses to let an app take the front back (it just flashes the taskbar); briefly keeping
+  // the window on top gets around that, so the TV is never left showing the desktop after a film
+  win.setAlwaysOnTop(true, 'screen-saver');
   win.focus(); win.moveTop?.();
+  setTimeout(() => win?.setAlwaysOnTop(false), 250);
 }
 function hideTv() { if (win && !win.isMinimized()) win.minimize(); }
 

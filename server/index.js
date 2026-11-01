@@ -32,21 +32,7 @@ const system = createSystem(DATA);
 // ---------------------------------------------------------------- helpers
 const sha = (s) => crypto.createHash('sha256').update(s).digest('hex');
 const isLocal = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
-// Lumen only answers devices on your own home network: even if a router or VPN ever passed traffic in from the
-// internet, nothing outside your network can reach the remote, the pairing page or your films.
-function onHomeNetwork(addr) {
-  const a = String(addr || '').replace(/^::ffff:/, '');
-  const v4 = a.match(/^(\d+)\.(\d+)\.\d+\.\d+$/);
-  if (v4) {
-    const [x, y] = [+v4[1], +v4[2]];
-    return x === 127 || x === 10 || (x === 172 && y >= 16 && y <= 31) || (x === 192 && y === 168) || (x === 169 && y === 254) || (x === 100 && y >= 64 && y <= 127);
-  }
-  const l = a.toLowerCase();
-  if (l === '::1' || /^fe[89ab]/.test(l) || /^f[cd]/.test(l)) return true; // link-local, private (ULA)
-  // a public IPv6 address in this computer's own network (same /64)
-  const pre = (x) => x.split(':').slice(0, 4).join(':');
-  return Object.values(os.networkInterfaces()).flat().some((i) => i && i.family === 'IPv6' && !i.internal && pre(i.address.toLowerCase()) === pre(l));
-}
+const { onHomeNetwork } = require('./netcheck');
 function deviceFor(token) {
   if (!token || typeof token !== 'string') return null;
   const h = sha(token);
@@ -445,7 +431,7 @@ async function route(req, res) {
     return send(res, 200, {
       version: VERSION, app: SHELL && local ? SHELL.info() : null, root: local ? ROOT : undefined, hasKey: !!s.tmdbKey || MOCK, mock: MOCK, imageBase: MOCK ? '/mock-img' : 'https://image.tmdb.org/t/p',
       region: s.region, deviceName: s.deviceName, services: s.services, serviceNames: Object.fromEntries(Object.entries(SERVICES).map(([k, v]) => [k, v.name])),
-      background: s.background, showClock: s.showClock, reduceMotion: s.reduceMotion, shortcuts: s.shortcuts, watchLink: s.watchLink, watchLinks: watchLinks(), accentRgb: accentRgb(), homeBanner: s.homeBanner, homeBannerName: s.homeBanner?.source === 'folder' ? (store.d.folders.find((f) => f.id === s.homeBanner.folderId)?.name || null) : null, webBrowserInUse: webBrowser(), userName: s.userName, accent: s.accent, sound: s.sound, brightness: s.brightness, blockPopups: s.blockPopups, autoPlay: s.autoPlay, softwareDecode: s.softwareDecode === true, intro: s.intro, webBrowser: s.webBrowser, lanHost: lanHost(), port: PORT, system: system.info(),
+      background: s.background, showClock: s.showClock, screensaver: s.screensaver !== false, reduceMotion: s.reduceMotion, shortcuts: s.shortcuts, watchLink: s.watchLink, watchLinks: watchLinks(), accentRgb: accentRgb(), homeBanner: s.homeBanner, homeBannerName: s.homeBanner?.source === 'folder' ? (store.d.folders.find((f) => f.id === s.homeBanner.folderId)?.name || null) : null, webBrowserInUse: webBrowser(), userName: s.userName, accent: s.accent, sound: s.sound, brightness: s.brightness, blockPopups: s.blockPopups, autoPlay: s.autoPlay, softwareDecode: s.softwareDecode === true, intro: s.intro, webBrowser: s.webBrowser, lanHost: lanHost(), port: PORT, system: system.info(),
       keyHint: s.tmdbKey ? '••••' + s.tmdbKey.slice(-4) : '',
     });
   }
@@ -515,6 +501,7 @@ async function route(req, res) {
       s.sound = snd;
     }
     if (typeof b.showClock === 'boolean') s.showClock = b.showClock;
+    if (typeof b.screensaver === 'boolean') s.screensaver = b.screensaver;
     if (typeof b.reduceMotion === 'boolean') s.reduceMotion = b.reduceMotion;
     store.save();
     resolveFolderArt();
@@ -625,6 +612,9 @@ async function route(req, res) {
     if (p === '/api/media/roots') return send(res, 200, { roots: await media.roots(store.d.mediaFolders), pinned: store.d.mediaFolders, vlc: system.info().vlc });
     if (p === '/api/media/list') return send(res, 200, await media.list(url.searchParams.get('path')));
     if (p === '/api/media/stream') return media.stream(req, res, url.searchParams.get('path'));
+    if (p === '/api/media/subs') return send(res, 200, { subs: await media.subtitles(url.searchParams.get('path')) });
+    if (p === '/api/media/sub') return send(res, 200, await media.subtitleVtt(url.searchParams.get('path')), { 'content-type': 'text/vtt; charset=utf-8' });
+    if (p === '/api/media/next') return send(res, 200, { next: await media.nextVideo(url.searchParams.get('path')).catch(() => null) });
     if (p === '/api/media/recent') return send(res, 200, { items: await media.recentVideos(store.d.mediaFolders, 40) });
     if (p === '/api/media/match') { try { return send(res, 200, await tmdb.matchFile(url.searchParams.get('name') || '')); } catch { return send(res, 200, null); } }
     if (p === '/api/media/pin' && m === 'POST') {

@@ -1,7 +1,7 @@
 // Full-screen player for local files (HTML5 video) and trailers (YouTube embed).
 import { icon } from '/shared/icons.js';
 import { api } from './api.js';
-import { el, esc, onSelect, confirmDialog } from './ui.js';
+import { el, esc, onSelect, confirmDialog, modal } from './ui.js';
 import * as nav from './nav.js';
 
 let P = null; // active player state
@@ -17,6 +17,7 @@ export const isOpen = () => !!P;
 
 function shell(title, sub) {
   const root = el(`<div id="player"><div class="chrome"><div class="ptitle">${esc(title)}${sub ? `<small>${esc(sub)}</small>` : ''}</div>
+    <div class="hint" style="position:absolute;top:4.4rem;right:var(--side);font-size:1.15rem;color:var(--ink-3)"></div>
     <div class="bar"><div class="rail"><div class="buf"></div><div class="done"></div><div class="knob"></div></div><div class="times"><span class="cur">0:00</span><span class="rem"></span></div></div></div>
     <div class="flash"></div><div class="spinner"></div></div>`);
   document.body.appendChild(root);
@@ -46,8 +47,9 @@ export async function playFile(file, { onExit, vlcAvailable } = {}) {
   v.preload = 'auto';
   v.src = `/api/media/stream?path=${encodeURIComponent(file.path)}`;
   root.prepend(v);
-  P = { kind: 'file', root, v, file, onExit, paused: false, key: 'file:' + file.path };
+  P = { kind: 'file', root, v, file, onExit, paused: false, key: 'file:' + file.path, subs: [] };
   nav.pushLayer(root, null);
+  loadSubs(v, file);
   const sp = root.querySelector('.spinner');
   const update = () => {
     if (!P || P.v !== v) return;
@@ -63,7 +65,7 @@ export async function playFile(file, { onExit, vlcAvailable } = {}) {
   v.addEventListener('waiting', () => (sp.style.display = ''));
   v.addEventListener('playing', () => { sp.style.display = 'none'; P && (P.paused = false); });
   v.addEventListener('canplay', () => (sp.style.display = 'none'));
-  v.addEventListener('ended', () => { api('/api/progress', { method: 'POST', body: { key: P.key, done: true } }).catch(() => {}); close(); });
+  v.addEventListener('ended', () => { api('/api/progress', { method: 'POST', body: { key: P.key, done: true } }).catch(() => {}); upNext(file); });
   v.addEventListener('error', () => {
     sp.style.display = 'none';
     const unsupported = v.error && (v.error.code === 3 || v.error.code === 4);
@@ -139,6 +141,83 @@ export function playTrailer(key, title, { onExit, onExternal } = {}) {
   showChrome(3000);
 }
 
+// ---- subtitles (.srt/.vtt files next to the video) and audio tracks (several languages in one file)
+async function loadSubs(v, file) {
+  let subs = [];
+  try { subs = (await api(`/api/media/subs?path=${encodeURIComponent(file.path)}`)).subs || []; } catch {}
+  if (!P || P.v !== v) return;
+  P.subs = subs;
+  subs.forEach((s, i) => {
+    const t = document.createElement('track');
+    t.kind = 'subtitles'; t.label = s.label; t.srclang = (s.lang || 'xx').slice(0, 2).toLowerCase(); t.src = `/api/media/sub?path=${encodeURIComponent(s.path)}`;
+    v.appendChild(t);
+  });
+  // the language you chose last time is switched on again
+  const want = localStorageGet('lumen.subs');
+  if (want) [...v.textTracks].forEach((t) => (t.mode = t.label === want ? 'showing' : 'disabled'));
+  else [...v.textTracks].forEach((t) => (t.mode = 'disabled'));
+  v.addEventListener('loadedmetadata', setHint, { once: true }); setHint();
+}
+function localStorageGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function localStorageSet(k, val) { try { if (val) localStorage.setItem(k, val); else localStorage.removeItem(k); } catch {} }
+const audioList = (v) => (v.audioTracks ? [...v.audioTracks] : []);
+function setHint() {
+  if (!P || P.kind !== 'file') return;
+  const n = P.v.textTracks.length, a = audioList(P.v).length;
+  P.root.querySelector('.hint').textContent = n || a > 1 ? `Press Down for ${n ? 'subtitles' : ''}${n && a > 1 ? ' and ' : ''}${a > 1 ? 'audio' : ''}` : '';
+}
+function trackMenu() {
+  if (!P || P.kind !== 'file') return;
+  const v = P.v, texts = [...v.textTracks], audio = audioList(v);
+  const on = texts.find((t) => t.mode === 'showing');
+  const rows = [];
+  rows.push(['sub:', 'Subtitles off', !on]);
+  texts.forEach((t, i) => rows.push([`sub:${i}`, `Subtitles: ${t.label}`, t === on]));
+  if (audio.length > 1) audio.forEach((a, i) => rows.push([`aud:${i}`, `Audio: ${a.label || a.language || `Track ${i + 1}`}`, a.enabled]));
+  if (!texts.length && audio.length < 2) rows.push(['', 'No subtitles found. Put an .srt file with the same name next to the video', false]);
+  const wasPaused = v.paused; v.pause();
+  const m = modal(`<h2>Subtitles &amp; Audio</h2><div class="list track-pick" data-group="col" style="margin-top:1.4rem"></div>`, { onClose: () => { if (!wasPaused && P?.v === v) v.play().catch(() => {}); } });
+  const l = m.querySelector('.list');
+  for (const [k, label, cur] of rows) l.appendChild(onSelect(el(`<div class="setting f ${cur ? 'current' : ''}"><span>${esc(label)}</span><span class="val">${cur ? icon('check') : ''}</span></div>`), () => {
+    if (k.startsWith('sub:')) {
+      const i = k.slice(4);
+      texts.forEach((t, j) => (t.mode = String(j) === i ? 'showing' : 'disabled'));
+      localStorageSet('lumen.subs', i === '' ? null : texts[+i]?.label);
+    } else if (k.startsWith('aud:')) {
+      const i = +k.slice(4), t = v.currentTime;
+      audio.forEach((a, j) => (a.enabled = j === i));
+      v.currentTime = t; // makes the new language start straight away
+    }
+    m.close();
+  }));
+  m.open(l.querySelector('.current') || l.querySelector('.f'));
+}
+
+// ---- Up Next: when a video ends, the next one in the same folder starts after a short countdown
+async function upNext(file) {
+  let next = null;
+  try { next = (await api(`/api/media/next?path=${encodeURIComponent(file.path)}`)).next; } catch {}
+  if (!P || P.file !== file) return;
+  if (!next || !next.playable) return close();
+  const title = next.name.replace(/\.[^.]+$/, '');
+  const card = el(`<div class="upnext"><small>Up next</small><b>${esc(title)}</b><div class="actions" data-group="row"></div></div>`);
+  const acts = card.querySelector('.actions');
+  let n = 10, timer = null;
+  const go = () => { clearInterval(timer); nav.popLayer(); card.remove(); const onExit = P?.onExit; playFile(next, { onExit, vlcAvailable: false }); };
+  const stop = () => { clearInterval(timer); nav.popLayer(); card.remove(); close(); };
+  const playBtn = onSelect(el(`<div class="btn primary f glow">${icon('play')}Play now · <span class="count">${n}</span></div>`), go);
+  acts.appendChild(playBtn);
+  acts.appendChild(onSelect(el(`<div class="btn f glow">Stop</div>`), stop));
+  card.back = stop;
+  P.root.appendChild(card);
+  P.root.classList.add('show');
+  requestAnimationFrame(() => card.classList.add('on'));
+  nav.pushLayer(card, playBtn);
+  P.upnext = card;
+  timer = setInterval(() => { n--; const c = card.querySelector('.count'); if (c) c.textContent = n; if (n <= 0) go(); }, 1000);
+  P.upnextStop = stop;
+}
+
 export function close() {
   if (!P) return;
   const p = P;
@@ -158,10 +237,12 @@ export function handleKey(k) {
   if (errorShown) { if (k === 'back') { close(); return true; } return false; }
   if (P.kind === 'file') {
     const v = P.v;
+    if (P.upnext?.isConnected) { if (k === 'back') { P.upnextStop(); return true; } return false; } // Up Next card has the focus
+    if (k === 'down' || k === 'menu') { trackMenu(); return true; }
     if (k === 'select' || k === 'playpause') { if (v.paused) { v.play(); P.paused = false; flash('play'); } else { v.pause(); P.paused = true; flash('pause'); } showChrome(); }
     else if (k === 'left') { v.currentTime = Math.max(0, v.currentTime - 10); flash('rewind'); showChrome(); }
     else if (k === 'right') { v.currentTime = Math.min(v.duration || 0, v.currentTime + 10); flash('forward'); showChrome(); }
-    else if (k === 'up' || k === 'down') showChrome(5000);
+    else if (k === 'up') showChrome(5000);
     else if (k === 'back') close();
     else return false;
     return true;

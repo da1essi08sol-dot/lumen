@@ -30,7 +30,15 @@ function toast(msg, ic = 'check') {
   const t = el(`<div class="toast">${icon(ic)}<span>${esc(msg)}</span></div>`);
   document.body.appendChild(t); setTimeout(() => t.remove(), 2600);
 }
-const haptic = () => { try { navigator.vibrate?.(8); } catch {} };
+// a light tap you can feel: Android vibrates; on iPhone (iOS 18+), toggling a hidden switch gives a haptic tick
+let hapticLabel = null;
+const haptic = () => {
+  try {
+    if (navigator.vibrate) { navigator.vibrate(8); return; }
+    if (!hapticLabel) { hapticLabel = document.createElement('label'); hapticLabel.style.cssText = 'position:fixed;left:-99px;top:0;opacity:0;pointer-events:none'; hapticLabel.innerHTML = '<input type="checkbox" switch>'; document.body.appendChild(hapticLabel); }
+    hapticLabel.click();
+  } catch {}
+};
 
 // ---------------------------------------------------------------- pieces
 const fmtTime = (s) => { s = Math.max(0, Math.round(s || 0)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; };
@@ -312,6 +320,7 @@ function openNowPlaying() {
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
         <button class="btn np-save" style="display:none">${icon('link')}Use this page for the film</button>
+        <button class="btn" data-sleep>${icon('sunLow')}<span>Sleep timer: Off</span></button>
         <button class="btn" data-stop>${icon('close')}Stop &amp; Back to Lumen</button>
         <a class="btn" href="/remote/" style="text-decoration:none;color:inherit">${icon('remote')}Open the Remote</a>
       </div>
@@ -321,6 +330,19 @@ function openNowPlaying() {
   v.querySelectorAll('[data-c]').forEach((b) => (b.onclick = () => (b.dataset.c === 'toggle' ? control('toggle') : control('seek', +b.dataset.c))));
   v.querySelectorAll('[data-v]').forEach((b) => (b.onclick = () => { haptic(); api('/api/volume', { method: 'POST', body: { a: b.dataset.v } }).catch((e) => toast(e.message, 'info')); }));
   v.querySelector('[data-stop]').onclick = async () => { haptic(); await api('/api/close-external', { method: 'POST' }).catch(() => {}); pb = { open: false }; drawMini(); back(); toast('Stopped'); };
+  // sleep timer: each tap moves to the next time (Off, 15, 30, 45, 60, 90, 120 minutes)
+  const sleepBtn = v.querySelector('[data-sleep]');
+  const STEPS = [0, 15, 30, 45, 60, 90, 120];
+  let sleepAt = null;
+  const drawSleep = () => { const m = sleepAt ? Math.max(1, Math.ceil((sleepAt - Date.now()) / 60000)) : 0; sleepBtn.querySelector('span').textContent = m ? `Sleep timer: ${m} min left` : 'Sleep timer: Off'; };
+  api('/api/sleep').then((r) => { sleepAt = r.sleep ? Date.now() + r.sleep.left * 1000 : null; drawSleep(); }).catch(() => {});
+  sleepBtn.onclick = async () => {
+    haptic();
+    const cur = sleepAt ? Math.ceil((sleepAt - Date.now()) / 60000) : 0;
+    const next = STEPS.find((x) => x > cur + 1) ?? 0;
+    try { const r = await api('/api/sleep', { method: 'POST', body: { minutes: next } }); sleepAt = r.sleep ? Date.now() + r.sleep.left * 1000 : null; drawSleep(); toast(next ? `The TV will sleep in ${next} minutes` : 'Sleep timer off', 'check'); }
+    catch (e) { toast(e.message, 'info'); }
+  };
   v.querySelector('.np-save').onclick = async () => { try { await api('/api/playback/save-link', { method: 'POST' }); toast('Saved — this film now opens on that page'); cache.clear(); } catch (e) { toast(e.message, 'info'); } };
   // drag the bar to jump
   const scrub = v.querySelector('.np-scrub');

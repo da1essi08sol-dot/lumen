@@ -16,6 +16,10 @@
   --panel: rgba(14, 14, 17, .94);      /* dialogs, toasts, the volume bar */
   --radius: .55rem;
   --font: 'Lumen Sans', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  /* calmer, quicker motion: a gentle settle instead of a bounce */
+  --spring: cubic-bezier(.2, 1.08, .32, 1);
+  --t-focus: 260ms;
+  --t-move: 420ms;
   --glow: 0 0 0 .13rem rgba(var(--acc), .92), 0 0 2.2rem .2rem rgba(var(--acc), .22);
 }
 body { font-family: var(--font); font-optical-sizing: auto; letter-spacing: 0; }
@@ -151,3 +155,12 @@ body { font-family: var(--font); font-optical-sizing: auto; letter-spacing: 0; }
 .upnext .count { color: rgb(var(--acc)); font-variant-numeric: tabular-nums; }
 .track-pick .setting.current .val { color: rgb(var(--acc)); }
 html.rm .card::after, html.rm .tab::before { transition: none; }
+
+/* holding a direction on the remote: everything follows at once */
+html.fast-nav .card, html.fast-nav .track, html.fast-nav .scroller, html.fast-nav .tab, html.fast-nav .tab::before, html.fast-nav .setting, html.fast-nav .btn, html.fast-nav .card .art { transition-duration: 90ms !important; }
+html.fast-nav .card.focused::after { transition-duration: 0ms; }
+.upnext .btn.focused .count { color: inherit; }
+/* subtitles in the player: Lumen's type, easy to read from the sofa */
+#player video::cue { font-family: var(--font); font-size: 2.4rem; font-weight: 560; line-height: 1.3; color: #fff; background: rgba(0,0,0,.62); }
+.toggle.on::after { background: var(--acc-ink); }
+.setting.focused .toggle.on::after { background: rgb(var(--acc)); }

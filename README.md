@@ -1,66 +1,55 @@
-# Lumen — TV interface for the Sharp AQUOS
+# Lumen — a TV interface for Windows
 
-A full-screen, remote-driven entertainment interface for your TV, run from the Dell Inspiron 5630 over HDMI. Your iPhone 14 becomes the remote through a web page; no app install needed.
+Lumen turns a Windows laptop or mini PC plugged into your TV into a full-screen, remote-driven home for films and TV.
+Your phone becomes the remote through a web page; nothing to install on the phone.
 
+## Install
 
+1. Download **Lumen-Setup-<version>.exe** from the [Releases page](https://github.com/da1essi08sol-dot/lumen/releases/latest) and open it.
+   - Windows may say **“Windows protected your PC”** because Lumen isn't code-signed yet. Choose **More info › Run anyway**.
+2. Lumen installs itself (no admin rights or Node.js needed), opens full screen, and walks you through:
+   - a free **TMDB key** for posters and film details (themoviedb.org › Settings › API › Create › Developer),
+   - **pairing your phone**: point the phone's camera at the code on the TV.
+3. The first time a phone connects, Windows asks whether Lumen may use the network. Choose **Private networks** and **Allow**.
+   Make sure your Wi-Fi is set to **Private** (Settings › Network & internet › Wi-Fi › your network).
 
+Lumen keeps your settings, folders, sign-ins and Continue Watching in `%LOCALAPPDATA%\Lumen`, separate from the program,
+so updating or reinstalling never touches them. Remove Lumen from **Settings › Apps**.
 
-## What's new in 1.9.1
+**Coming from Lumen 1.x (the folder version)?** Install 2.0 and open it once: it finds your old Lumen folder and copies
+your settings, folders, phone pairing and sign-ins across. The old folder is left as it was; delete it when you're happy.
+If it can't find it, use the tray icon › **Import settings from an older Lumen…**
 
-- **Open in Brave on the iPhone.** When you watch on the phone (**Here**), the **Brave** button at the top sends the film to the Brave app, whose Shields block ads and pop-ups. Use it when a website won't play inside Lumen (for example, it complains about being sandboxed). Websites that refuse to be shown inside Lumen offer **Open in Brave** straight away. If Brave isn't installed, Lumen offers the App Store link or Safari.
+## Updates
 
-## What's new in 1.9
+Lumen checks for a new version every few hours. When there is one, the TV shows a note: go to **Settings › Update Lumen**
+and press **Update Now**. Lumen downloads it, closes for a few seconds and opens again on the new version.
+You can also put a `Lumen-Setup-<version>.exe` in your Downloads folder; Lumen spots it the same way.
 
-- **Lumen on your phone.** Open the Lumen Remote and tap **Browse** (or go to `/phone/` on the same address). Everything is there with touch: Home, Films, TV Shows, Search, your Library and folders, and every film's page.
-  - **On TV** starts the film on the TV and your phone becomes its controls (Now Playing): play/pause, skip 10 or 30 seconds, drag to any point, volume, and Stop. You never leave Lumen.
-  - **Here** plays it on the phone inside Lumen when the website allows that (pop-ups and redirects are blocked in there). Websites that don't allow being shown inside other apps open in your browser instead — Lumen tells you first.
-  - Tip: in Safari, Share › **Add to Home Screen** makes Lumen open full screen like an app.
-- **Save the right page for a film.** If a film says "not found", choose **Open the website anyway**, find the film, then press **★ Use this page for …** (bottom right, or **Use this page for the film** on the phone's Now Playing). From then on that film's Watch button goes straight there. **Forget Saved Page** on the film's page undoes it.
+## The tray icon
 
-## What's new in 1.8
+Lumen sits in the system tray (bottom right, by the clock). From there you can show Lumen, choose which screen it uses
+(handy when the laptop's own screen and the TV are both on), turn **Start Lumen when I sign in** on or off, check for
+updates, open the data folder, or quit. Closing the TV window (Alt + F4) only hides it; your phone can bring it back.
 
-- **Multiple Watch buttons.** Settings › Watch Buttons › Add a Watch Website. Add as many sites as you like; every film then shows a "Watch on …" button for each. Continue Watching resumes on the site you were watching on. Press a site in Settings to change its link or name (clear the link to remove it).
-- **No more black screen or "locked" full screen.** Lumen no longer uses the website's full-screen mode. The browser window already covers the TV, so Lumen stretches the player over the whole window instead: it looks the same, nothing can get stuck, and the player's own buttons work. The player tells Lumen when you skip or fast forward; only then does Lumen refresh the picture (and check it once a few seconds later). While the film simply plays, Lumen leaves the page completely alone, so nothing flashes.
-- **Home banner.** Settings › Display › Home Banner: a fresh shuffle of films recommended for you every time, or the films from one of your folders.
-- **Sounds.** The original Lumen sound styles (Soft, Crisp, Glass, Arcade, Marimba, Cosmic, Bubble) are back.
+## What's new in 2.0
 
-## Install (first time)
-
-1. Unzip **Lumen-TV.zip** and put the **Lumen** folder somewhere it can stay (for example Documents).
-2. Double-click **Install Lumen** inside it. It:
-   - checks Node.js and installs it if needed,
-   - adds **Lumen** and **Update Lumen** to your desktop and Start menu (with the Lumen icon),
-   - asks whether Lumen should start when you sign in,
-   - lets your iPhone remote through Windows Firewall (Windows asks for permission once),
-   - starts Lumen.
-
-There's also a **Lumen** shortcut with the icon right inside the Lumen folder. Drag it to the desktop, or right-click it and choose **Pin to taskbar**. It just opens Lumen; if Lumen is already running it brings it up without restarting.
-
-## Update
-
-1. Download the new **Lumen-TV.zip** (leave it in Downloads).
-2. Either double-click **Update Lumen** on your desktop, **or** on the TV go to **Settings › Update Lumen**.
-
-That's it. Lumen closes, puts in the new version and opens again. Your settings, phone pairing, sign-ins and Continue Watching are kept, because the `data` folder is never touched.
-Coming from an older Lumen without these shortcuts? Unzip the new download and double-click **Update Lumen** inside the unzipped folder. It finds the Lumen you already use and updates that one.
-
-## What you need to do (about 15 minutes, once)
-
-1. **Install Node.js** — the LTS version from nodejs.org (accept the defaults). Lumen uses no other packages.
-2. **Unzip** this folder somewhere permanent, e.g. `C:\Lumen`.
-3. **Allow the iPhone in** — double-click `windows\Allow iPhone access.cmd` and approve the admin prompt. It opens port 8787 on *private* networks only. Make sure your Wi-Fi's network profile is set to **Private** (Settings → Network & internet → Wi-Fi → your network).
-4. **Start it** — double-click `windows\Start Lumen.vbs`. The TV interface opens full screen on whichever display is the main one. To put it on the TV, press `Win + P` → **Second screen only**, or set the TV as the main display.
-5. **Get a free TMDB key** (for posters and film details):
-   - Sign up at themoviedb.org/signup and confirm your email.
-   - Go to themoviedb.org/settings/api → **Create** → **Developer**, and describe it as a personal, non-commercial TV interface.
-   - Paste either the **API Key** or the **API Read Access Token** at `http://localhost:8787/setup` on the laptop, or later in the iPhone remote's **Setup** tab.
-6. **Pair your iPhone**:
-   - On the TV, select the remote icon (top right).
-   - Point the iPhone camera at the QR code and tap the link, then **Pair**, then **Start Remote**.
-   - Tip: in Safari, Share → **Add to Home Screen** gives you a full-screen remote. The Home Screen icon has its own storage, so pair once more from it.
-7. **Autostart (optional)** — double-click `windows\Install autostart.cmd`. Lumen then opens every time you sign in to Windows.
-
-To exit the full-screen TV window press **Alt + F4**. To stop the server, run `windows\Stop Lumen.cmd`.
+- **One app.** Lumen is now a normal Windows program with an installer: no Node.js, no scripts, no console windows.
+  It starts faster, opens its own full-screen window, and updates itself.
+- **A new look.** A darkened-cinema design: the thing you're on is lit (your colour pools under it and the rest of the row dims),
+  big condensed titles, tabs with a bar of light, and new type throughout (TV and phone).
+- **Sleep timer.** Settings › Sleep Timer, or the phone's Now Playing screen. The sound fades out over the last minute,
+  whatever is playing stops, the screen turns off, and the volume goes back to normal for next time.
+- **Subtitles and audio languages** for videos on your computer: press **Down** while one plays. Lumen finds `.srt`/`.vtt` files
+  with the same name (e.g. `Film.en.srt`, or in a `Subs` folder) and remembers the language you pick.
+- **Up Next.** When an episode on your computer ends, the next file in the folder starts after 10 seconds (Stop cancels).
+- **Each film remembers its Watch website.** With more than one Watch website, a film's main button is the one you used last time.
+- **Game controllers.** Plug in or pair an Xbox or PlayStation controller: D-pad/stick moves, A selects, B goes back, Menu opens options.
+- **Screensaver.** After 10 minutes with nothing happening, film artwork drifts across the screen with the time (Settings › Screensaver).
+- **Snappier.** Holding a direction makes the highlight keep up instantly; films you rest on are prepared in the background so they open at once.
+- **Safer phone access.** Lumen only answers devices on your own home network, even if something on the router were opened up.
+- **Phone:** haptic taps on iPhone, the new type, and the sleep timer.
+- **New installs start with an empty library** (existing folders are kept).
 
 ## Using it
 
@@ -104,17 +93,17 @@ Settings → Watch Button → **Software Video Decoding** (off by default) is a 
 
 ## Sign-ins are remembered
 
-Every website (BBC iPlayer, Channel 4, ITVX, your Watch site…) opens in the same browser (Brave if it's installed, otherwise Edge), so you sign in once. When you press Home, Lumen closes the browser properly so it saves your sign-ins first; a forced close could lose a sign-in you'd just made.
+Every website (BBC iPlayer, Channel 4, ITVX, your Watch site…) opens in the same browser (Brave if it's installed, otherwise Edge), so you sign in once. When you press Home, Lumen closes the browser properly so it saves your sign-ins first; a forced close could lose a sign-in you'd just made. Sign-ins are kept in Lumen's data folder (tray icon › Open Lumen's data folder).
 
 ## Closing Lumen
 
-The **power button** in the top-left corner (next to the clock) closes Lumen: it asks "Close Lumen?", shows a goodbye screen, then does exactly what **Stop Lumen** does: closes the TV screen and any open website (Lumen's own browser windows only; your normal browser is left alone), then stops the server. To start again, use **Start Lumen** on the laptop. Only the TV itself can do this, not the phone remote, so Lumen can't be switched off from a phone it can't then restart.
+The **power button** in the top-left corner (next to the clock) closes Lumen: it asks "Close Lumen?", shows a goodbye screen, then closes the TV screen and any open website (Lumen's own browser windows only; your normal browser is left alone), then quits Lumen. To start again, open **Lumen** from the Start menu or desktop. Only the TV itself can do this, not the phone remote, so Lumen can't be switched off from a phone it can't then restart.
 
 ## LumenTV start-up
 
 When Lumen opens, the screen fills with your colour, a floor stretches away to the horizon, and as your start-up sound plays the LumenTV writing rises up from below the screen and comes to rest standing on the floor with a soft shadow beneath it. Shortly after the last hit, the sound fades out while the picture fades into the menu, so they arrive together (about 4 seconds in all). Closing Lumen shows the same scene, with the writing rising into place while your shutdown sound plays and the screen fades to black, and Lumen closes once the sound has completely finished. Press any key to skip.
 
-**Your own sounds:** the start-up and shutdown sounds are the files `public\tv\sounds\startup.mp3` and `shutdown.mp3`. Swap in any other mp3 with the same name and Lumen times the opening and the close to it by itself. Delete them to go back to Lumen's built-in sound.
+**Your own sounds:** the start-up and shutdown sounds are the files `resources\app\public\tv\sounds\startup.mp3` and `shutdown.mp3` inside Lumen's program folder. Swap in any other mp3 with the same name and Lumen times the opening and the close to it by itself. Delete them to go back to Lumen's built-in sound.
 
 ## Make it yours
 
@@ -142,7 +131,6 @@ Website tiles get the same pop-up blocking and loading screen.
 **Ad-blocker extension:** Lumen's Brave is separate from your own Brave, so your extensions aren't in it.
 Settings → Watch Button → **Add an Ad-blocker Extension** opens Lumen's Brave in a normal window on the extension store. Install the same blocker you use, then press Home. It stays installed.
 
-This needs **Node.js 22 or newer** (the current LTS from nodejs.org is fine).
 
 ## Phone remote
 
@@ -156,16 +144,6 @@ This needs **Node.js 22 or newer** (the current LTS from nodejs.org is fine).
 Settings → Personal → **Colour** cycles through Moonlight, Amber, Rose, Mint, Sky, Lilac and five reds (Red, Scarlet, Crimson, Cherry, Coral).
 **Custom Colour** takes any hex code (e.g. `#B3001B`), and the phone's Setup tab has a colour wheel; the TV follows as you drag.
 Dark colours automatically get white text.
-
-## Updating Lumen
-
-Copy the new files **over** your existing Lumen folder and keep the `data` folder. It holds your settings, phone pairing, sign-ins and Continue Watching.
-Then run **Start Lumen**. It now always restarts the server and the TV window, so the new version is definitely the one running. If an old server keeps running after an update, settings such as the new colours don't save.
-
-## Faster start-up
-
-- Lumen saves what it last loaded from TMDB and shows it instantly next time, then refreshes it quietly in the background.
-- The start script checks for the server in milliseconds instead of seconds, and the server answers on both IPv4 and IPv6. Previously Windows could wait about 2 seconds per connection before falling back.
 
 ## Where films can be watched
 
@@ -185,53 +163,23 @@ TMDB only supplies information and artwork, not the films themselves. Lumen keep
 
 **Not included: TVIDS.net, ramoflix.net and doraby.com.** They stream films without the rights to them, so Lumen does not link films to them or to any similar site.
 
-## How it fits together
+
+## For developers
 
 ```
-iPhone (Safari)  ──Wi-Fi──►  Lumen server on the laptop (Node.js, port 8787)  ◄──  TV page (Edge kiosk, localhost only)
-   /remote/                      • TMDB proxy — API key never leaves the laptop      /tv/
-   pairing code → token          • WebSocket hub for remote commands
-                                 • Windows helper (PowerShell): Core Audio volume,
-                                   key/mouse input for websites, window focus
-                                 • Local video streaming with byte ranges
+npm install          # Electron + electron-builder
+npm start            # run the app
+npm test             # API, media, update and import tests (no Electron needed)
+npm run server       # just the server, e.g. LUMEN_MOCK=1 LUMEN_SYSTEM=mock npm run server for test data
 ```
 
-- **Security**:
-  - The TV page and local file access only work from the laptop itself.
-  - Phones need a one-time 6-digit code shown on the TV. Codes expire after 5 minutes, allow 5 tries, and repeated wrong attempts are rate-limited.
-  - Each paired phone gets a long random token; only a hash of it is stored. Unpair phones in Settings → iPhone Remotes.
-  - The TMDB key is kept in `data\store.json` on the laptop and is never sent to the TV page or the phone.
-  - Traffic on your home Wi-Fi is not encrypted, so use it on a trusted network.
-- **Data**: settings, folders, history, playback positions and paired phones live in `data\store.json`. Back up that file to keep your folders.
+Releasing: bump `version` in `package.json`, commit, then tag and push (`git tag v2.0.1 && git push --tags`).
+GitHub Actions builds `Lumen-Setup-<version>.exe` and publishes the release; every Lumen then offers the update.
 
-## Moving to a mini PC later
-
-Copy the whole folder, including `data\`, to the mini PC:
-
-- **Windows mini PC**: works exactly the same.
-- **Linux mini PC**: there's a best-effort backend. Install `pactl` for volume and `xdotool` for keys and trackpad, use Chromium, and start it with `node server/index.js` plus a Chromium `--kiosk http://localhost:8787/tv/` window.
-
-## Testing status — what was and wasn't tested
-
-Tested here, in a Linux test environment with Chrome at 1920×1080 and an emulated iPhone 14:
-
-- **Navigation and folders**: every screen driven with arrow, OK and Back keys only, including creating, renaming and deleting folders, adding and removing films, and the on-screen keyboard.
-- **iPhone pairing and remote**:
-  - Wrong codes are rejected; the right code pairs.
-  - The d-pad, OK, Back, Home, volume, mute, keyboard-to-search and Show Lumen all work.
-  - Website control works: arrow keys, OK and clicks are forwarded, and Home closes the site.
-- **Security**: the TV page, API, WebSocket and file streaming all refuse network access without a valid pairing.
-- **Local video**: playback, seeking, pause, resume prompt, and the friendly message for formats the browser can't play.
-- **QR codes**: decoded successfully with a separate QR reader.
-
-**Not yet tested on Windows** (it couldn't be run there from this workspace):
-
-- The PowerShell volume and keystroke helper (`server\system\win-helper.ps1`)
-- Edge kiosk launching and the autostart scripts
-- VLC launching
-- Brave launching
-- YouTube's TV-style interface
-
-All of these use standard, well-documented Windows APIs and browser switches, but they need a first run on your laptop. Film data was also tested against a stand-in for TMDB, because TMDB is unreachable from the test environment; your real key will show real posters.
+- `electron/` — the desktop app: window, tray, updates, importing 1.x settings
+- `server/` — the Lumen server (TMDB, phone remote, local videos, Windows helper, the Watch helper for websites)
+- `public/` — the TV interface, the phone remote and the phone app
+- `windows/` — the zip installer and uninstaller (only needed without the GitHub installer)
 
 Film data and images: TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.
+Type: Bricolage Grotesque (SIL Open Font License, `public/shared/fonts/OFL-Bricolage.txt`).

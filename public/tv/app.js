@@ -32,6 +32,7 @@ async function boot() {
 
 // ======================================================================= update Lumen
 async function updateLumen() {
+  if (cfg.app) return updateApp();
   ui.toast('Looking for a new version in Downloads…', 'search');
   let u; try { u = await api('/api/update/check'); } catch (e) { return ui.toast(e.message, 'info'); }
   if (!u.supported) return ui.confirmDialog({ title: 'Update Lumen', text: 'On the Windows laptop: download the new Lumen-TV.zip, then double-click “Update Lumen” on the desktop.', ok: 'OK', cancel: 'Close' });
@@ -42,6 +43,45 @@ async function updateLumen() {
   const x = introScene('bye up', `<p>Updating to version ${esc(u.version)}…</p>`);
   document.body.appendChild(x);
   try { await api('/api/update/run', { method: 'POST', body: { zip: u.zip } }); } catch (e) { x.remove(); ui.toast(e.message, 'info'); }
+}
+
+// Lumen as a desktop app: new versions come from GitHub by themselves, or from an installer in Downloads
+async function updateApp() {
+  ui.toast('Checking for a new version…', 'search');
+  let u; try { u = await api('/api/update/check'); } catch (e) { return ui.toast(e.message, 'info'); }
+  if (!u.found) return ui.confirmDialog({ title: 'You’re up to date', text: `Lumen ${u.installed} is the newest version.${u.note ? ' ' + u.note : ''}`, ok: 'OK', cancel: 'Close' });
+  const ok = await ui.confirmDialog({ title: `Update to Lumen ${u.version}?`, text: `${u.source === 'github' ? 'It downloads now. ' : ''}Lumen closes for a few seconds, puts in the new version and opens again by itself. Your settings, folders, sign-ins and Continue Watching stay as they are.`, ok: 'Update Now' });
+  if (!ok) return;
+  const x = introScene('bye up', `<p class="upd">Getting Lumen ${esc(u.version)} ready…</p>`);
+  document.body.appendChild(x);
+  try { await api('/api/update/run', { method: 'POST', body: {} }); } catch (e) { x.remove(); ui.toast(e.message, 'info'); }
+}
+
+// ---- sleep timer: a small countdown at the top while it's set; when it ends everything stops and the screen goes dark
+let sleepState = null, sleepTick = null;
+function setSleepBadge(info) {
+  sleepState = info ? { at: Date.now() + info.left * 1000 } : null;
+  let b = $('#sleepBadge');
+  if (!b) { b = el(`<div id="sleepBadge" class="sleep-badge">${icon('sunLow')}<span></span></div>`); document.body.appendChild(b); }
+  clearInterval(sleepTick);
+  const draw = () => { if (!sleepState) return b.classList.remove('on'); const m = Math.max(0, Math.ceil((sleepState.at - Date.now()) / 60000)); b.querySelector('span').textContent = `Sleep in ${m} min`; b.classList.add('on'); };
+  draw(); if (sleepState) sleepTick = setInterval(draw, 15000);
+}
+const sleepLabel = () => (sleepState ? `${Math.max(1, Math.ceil((sleepState.at - Date.now()) / 60000))} min left` : 'Off');
+async function sleepDialog() {
+  const opts = [[0, 'Off'], [15, '15 minutes'], [30, '30 minutes'], [45, '45 minutes'], [60, '1 hour'], [90, '1 hour 30'], [120, '2 hours']];
+  const pick = await choose('Sleep Timer', opts.map(([m, l]) => [String(m), l]));
+  if (pick === null || pick === undefined) return;
+  try { const r = await api('/api/sleep', { method: 'POST', body: { minutes: +pick } }); setSleepBadge(r.sleep); ui.toast(r.sleep ? `Lumen will sleep in ${pick} minutes` : 'Sleep timer off', 'check'); }
+  catch (e) { ui.toast(e.message, 'info'); }
+}
+function sleepNow() {
+  setSleepBadge(null);
+  if (player.isOpen()) player.close();
+  ui.modalStack.slice().reverse().forEach((m) => m.close?.());
+  const s = el(`<div id="sleeping" style="position:fixed;inset:0;z-index:2147483001;background:#000;display:grid;place-items:center;color:rgba(243,241,236,.5);font-size:1.6rem;opacity:0;transition:opacity 2s"><div>Sleep timer finished. Press any button to wake Lumen.</div></div>`);
+  document.body.appendChild(s); requestAnimationFrame(() => (s.style.opacity = 1));
+  app.sleeping = s;
 }
 
 // the start-up / closing scene: your colour as a flat background, a 3D floor stretching away to the horizon,
@@ -326,7 +366,7 @@ function setAmbient(url, cls) {
   amb.key = key;
   const l = amb.layers[(amb.flip ^= 1)], o = amb.layers[amb.flip ^ 1];
   const go = () => { if (amb.key !== key) return; l.className = 'layer ' + cls; l.style.backgroundImage = url ? `url("${url}")` : ''; requestAnimationFrame(() => { l.classList.add('on'); o.classList.remove('on'); }); };
-  if (url) { const i = new Image(); i.onload = i.onerror = go; i.src = url; } else go();
+  if (url) { const i = new Image(); i.src = url; (i.decode ? i.decode() : Promise.reject()).then(go, go); } else go(); // decoded first, so the fade never stutters
 }
 function applyBackground() {
   const b = cfg.background || { mode: 'artwork' };
@@ -601,7 +641,9 @@ function detailView(item) {
     const resume = (await watchingList()).find((w) => w.id === d.id && w.type === d.type);
     // one Watch button per Watch website; the first (or the one you were watching on) is the big one
     const links = watchLinks(), rl = resume ? findLink(resume.linkId) : null;
-    const main = rl || links[0] || null;
+    // the site you used last time for this film comes first
+    const last = links.length > 1 && !rl ? await api(`/api/film-site?type=${d.type}&id=${d.id}`).then((r) => links.find((w) => w.id === r.linkId)).catch(() => null) : null;
+    const main = rl || last || links[0] || null;
     acts.appendChild(onSelect(el(`<div class="btn primary autofocus f glow">${icon('play')}${resume && rl ? `Resume${links.length > 1 ? ` on ${esc(linkName(rl))}` : ''} · ${esc(fmtLeft(resume))}` : esc(watchLabel(main))}</div>`), () => openWatch(d.title, d.year, d, main?.id)));
     for (const w of links) if (w !== main) acts.appendChild(onSelect(el(`<div class="btn f glow">${icon('play')}${esc(watchLabel(w))}</div>`), () => openWatch(d.title, d.year, d, w.id)));
     // a page you saved yourself for this film (after "not found") — offer to forget it
@@ -924,12 +966,14 @@ function settingsView() {
     item('Also Use the TV’s Own Backlight', tog(br.hw), () => save({ brightness: { hw: !br.hw } }), 'Only some TVs allow this over HDMI. Lumen’s own dimming always works');
 
     sec('General');
+    item('Sleep Timer', esc(sleepLabel()), sleepDialog, 'Fades the sound out, stops what’s playing and turns the screen off. Also on your phone’s Now Playing');
     item('TV Name', esc(cfg.deviceName), async () => { const n = await ui.promptDialog({ title: 'TV Name', value: cfg.deviceName }); if (n) await save({ deviceName: n }); }, 'Shown on your iPhone remote');
     item('TMDB API Key', cfg.mock ? 'Demo data' : cfg.keyHint ? esc(cfg.keyHint) : 'Not set', enterKeyDialog, 'Easiest to paste on your phone (Setup tab) or at localhost:' + cfg.port + '/setup');
     const regions = ['GB', 'IE', 'US', 'CA', 'AU'];
     item('Region', esc(cfg.region), async () => { await save({ region: regions[(regions.indexOf(cfg.region) + 1) % regions.length] }); }, 'Controls which free services and age ratings are shown');
     item('Show Clock', tog(cfg.showClock), () => save({ showClock: !cfg.showClock }));
     item('Reduce Motion', tog(cfg.reduceMotion), () => save({ reduceMotion: !cfg.reduceMotion }));
+    item('Screensaver', tog(cfg.screensaver !== false), () => save({ screensaver: cfg.screensaver === false }), 'After 10 minutes with nothing happening, film artwork drifts across the screen with the time');
 
     sec('Background');
     const modes = [['artwork', 'Film Artwork'], ['custom', 'My Picture'], ['graphite', 'Graphite'], ['black', 'Black']];
@@ -985,10 +1029,15 @@ function settingsView() {
     for (const p of roots.pinned || []) item(p, 'Remove', async () => { await api('/api/media/unpin', { method: 'POST', body: { path: p } }); });
     item('Browse Drives', icon('drive'), () => switchTab('library', { focusContent: true }), 'Add folders from My Library → Videos on This Computer');
 
+    if (cfg.app) {
+      sec('This Computer');
+      item('Start Lumen When I Sign In', tog(cfg.app.autostart), async () => { await api('/api/app', { method: 'POST', body: { autostart: !cfg.app.autostart } }).catch((e) => ui.toast(e.message, 'info')); }, 'Lumen opens on the TV whenever this computer starts');
+      item('Updates', cfg.app.updates?.github ? 'Automatic' : 'From Downloads', null, cfg.app.updates?.github ? 'Lumen checks for new versions every few hours and tells you here' : 'Put a new Lumen installer in Downloads, then press Update Lumen');
+    }
     sec('About');
     item('Recently Viewed', 'Clear', async () => { const ok = await ui.confirmDialog({ title: 'Clear recently viewed?', text: 'Your folders are not affected.', ok: 'Clear', danger: true }); if (ok) { await api('/api/recent', { method: 'DELETE' }); invalidate('section:home'); ui.toast('Cleared'); } });
     item('System', esc(`${cfg.system?.platform || '?'} · volume ${cfg.system?.helper ? 'ready' : 'starting'} · VLC ${cfg.system?.vlc ? 'found' : 'not installed'}`), null);
-    item('Update Lumen', icon('download') || 'Check', updateLumen, 'Download the new Lumen-TV.zip on this laptop, then press here — your settings are kept');
+    item('Update Lumen', icon('download') || 'Check', updateLumen, cfg.app ? 'Checks for a new version now. Your settings are kept' : 'Download the new Lumen-TV.zip on this laptop, then press here — your settings are kept');
     item('Lumen', `Version ${esc(cfg.version || '1.0')}`, null, 'Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.');
     box.appendChild(list);
     s.appendChild(box);
@@ -1074,7 +1123,18 @@ addEventListener('keydown', (e) => {
 });
 navigator.mediaSession && ['play', 'pause'].forEach((a) => { try { navigator.mediaSession.setActionHandler(a, () => dispatch('playpause')); } catch {} });
 
+// holding a direction: focus moves get much quicker, so the highlight never lags behind the remote
+let lastMoveAt = 0, fastT = null;
+function noteMove() {
+  const now = performance.now();
+  if (now - lastMoveAt < 170) { document.documentElement.classList.add('fast-nav'); clearTimeout(fastT); fastT = setTimeout(() => document.documentElement.classList.remove('fast-nav'), 260); }
+  lastMoveAt = now;
+}
 function dispatch(k) {
+  idle.poke();
+  if (idle.wake()) return; // the screensaver swallows the press that wakes it
+  if (['up', 'down', 'left', 'right'].includes(k)) noteMove();
+  if (app.sleeping) { app.sleeping.remove(); app.sleeping = null; return; } // any button wakes Lumen after the sleep timer
   if (k === 'home' || k === 'main') return goHome(k === 'main');
   if (app.external) { if (k === 'back') api('/api/close-external', { method: 'POST' }).catch(() => {}); return; }
   if (player.isOpen() && !ui.topModal() && player.handleKey(k)) return; // dialogs (e.g. Resume?) get keys first
@@ -1188,7 +1248,13 @@ addEventListener('wheel', (e) => {
 // ======================================================================= server messages
 function onServer(m) {
   switch (m.t) {
-    case 'hello': app.remotes = m.remotes; $('#remoteBtn').classList.toggle('has-remote', m.remotes > 0); setExternal(m.external); break;
+    case 'hello': app.remotes = m.remotes; $('#remoteBtn').classList.toggle('has-remote', m.remotes > 0); setExternal(m.external); setSleepBadge(m.sleep); break;
+    case 'sleep': setSleepBadge(m.sleep); break;
+    case 'sleep-now': sleepNow(); break;
+    case 'update-available': ui.toast(`Lumen ${m.version} is ready to install — Settings › Update Lumen`, 'download'); break;
+    case 'update-progress': { const u = $('#intro .upd'); if (u) u.textContent = `Downloading… ${m.p}%`; break; }
+    case 'update-installing': { const u = $('#intro .upd'); if (u) u.textContent = `Installing Lumen ${m.version}…`; break; }
+    case 'update-failed': $('#intro')?.remove(); ui.toast(`Update didn’t work: ${m.error}`, 'info'); break;
     case 'key': dispatch(m.k); break;
     case 'text': {
       const tt = ui.textTarget.current;
@@ -1232,6 +1298,89 @@ function setExternal(ext) {
   else x.classList.remove('on');
   sendState();
 }
+
+// ---- game controllers (Xbox, PlayStation…): the D-pad or left stick moves, A selects, B goes back
+const PAD = { 12: 'up', 13: 'down', 14: 'left', 15: 'right', 0: 'select', 1: 'back', 2: 'playpause', 3: 'menu', 9: 'home', 8: 'back' };
+const padState = new Map();
+function pollPads() {
+  const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+  const now = performance.now();
+  for (const gp of pads) {
+    const held = new Set();
+    for (const [b, k] of Object.entries(PAD)) if (gp.buttons[b]?.pressed) held.add(k);
+    const [x = 0, y = 0] = gp.axes;
+    if (y < -0.55) held.add('up'); if (y > 0.55) held.add('down'); if (x < -0.55) held.add('left'); if (x > 0.55) held.add('right');
+    for (const k of held) {
+      const id = gp.index + ':' + k, st = padState.get(id);
+      const repeats = ['up', 'down', 'left', 'right'].includes(k);
+      if (!st) { padState.set(id, { next: now + 380 }); document.body.classList.remove('mouse'); dispatch(k); }
+      else if (repeats && now >= st.next) { st.next = now + 110; dispatch(k); }
+    }
+    for (const id of [...padState.keys()]) if (id.startsWith(gp.index + ':') && !held.has(id.split(':')[1])) padState.delete(id);
+  }
+  requestAnimationFrame(pollPads);
+}
+addEventListener('gamepadconnected', (e) => ui.toast(`${(e.gamepad.id || 'Controller').replace(/\(.*\)/, '').trim() || 'Controller'} connected`, 'remote'));
+requestAnimationFrame(pollPads);
+
+// ---- screensaver: after a while with nothing happening, film artwork drifts slowly across the screen with the
+// time on top. Any press brings Lumen back exactly as it was. Not while a film or website is playing.
+const idle = (() => {
+  let last = Date.now(), on = null, timer = null;
+  const mins = () => (cfg.screensaver === false ? 0 : 10);
+  async function start() {
+    if (on || app.external || player.isOpen() || app.sleeping || ui.topModal() || !mins()) return;
+    let pics = [];
+    try { const d = await cached('section:home', () => api('/api/section/home'), 3 * 60e3); pics = [...(d.hero || []), ...d.rows.flatMap((r) => r.items || [])].filter((i) => i.backdrop_path).map((i) => ({ src: img(i.backdrop_path, 'w1280'), title: i.title })); } catch {}
+    if (!pics.length || on) return;
+    pics = pics.filter((p, i) => pics.findIndex((q) => q.src === p.src) === i).sort(() => Math.random() - 0.5).slice(0, 24);
+    on = el(`<div id="saver" style="position:fixed;inset:0;z-index:150;background:#000;opacity:0;transition:opacity 1.6s ease;overflow:hidden">
+      <div class="s-a" style="position:absolute;inset:-6%;background:center/cover;opacity:0;transition:opacity 2.4s ease"></div>
+      <div class="s-b" style="position:absolute;inset:-6%;background:center/cover;opacity:0;transition:opacity 2.4s ease"></div>
+      <div style="position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.75),rgba(0,0,0,0) 45%)"></div>
+      <div style="position:absolute;left:var(--side);bottom:5rem"><div class="s-t" style="font-size:6rem;font-weight:700;font-stretch:80%;line-height:1;font-variant-numeric:tabular-nums"></div><div class="s-n" style="font-size:1.5rem;color:var(--ink-2);margin-top:.6rem"></div></div></div>`);
+    document.body.appendChild(on);
+    requestAnimationFrame(() => (on.style.opacity = 1));
+    let i = 0, flip = 0;
+    const show = async () => {
+      if (!on) return;
+      const p = pics[i++ % pics.length];
+      const im = new Image(); im.src = p.src; try { await im.decode(); } catch {}
+      if (!on) return;
+      const a = on.querySelector(flip ? '.s-b' : '.s-a'), b = on.querySelector(flip ? '.s-a' : '.s-b'); flip ^= 1;
+      a.style.backgroundImage = `url("${p.src}")`;
+      // a slow drift (transform only, so it stays smooth)
+      a.animate([{ transform: 'scale(1.02) translate(-1.5%, 0)' }, { transform: 'scale(1.1) translate(1.5%, -1%)' }], { duration: 16000, easing: 'linear', fill: 'forwards' });
+      a.style.opacity = 1; b.style.opacity = 0;
+      on.querySelector('.s-n').textContent = p.title || '';
+    };
+    const clock = () => { if (on) on.querySelector('.s-t').textContent = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); };
+    clock(); show();
+    on.timers = [setInterval(show, 12000), setInterval(clock, 10000)];
+  }
+  function wake() {
+    if (!on) return false;
+    const s = on; on = null; s.timers.forEach(clearInterval);
+    s.style.transition = 'opacity .45s ease'; s.style.opacity = 0; setTimeout(() => s.remove(), 500);
+    return true;
+  }
+  function poke() { last = Date.now(); }
+  setInterval(() => { if (mins() && Date.now() - last > mins() * 60e3) start(); }, 20000);
+  addEventListener('mousemove', () => { poke(); wake(); });
+  return { poke, wake };
+})();
+
+// ---- when a film stays highlighted for a moment, Lumen fetches its details and artwork, so opening it is instant
+let prefetchT = null;
+document.addEventListener('nav-focus', (e) => {
+  clearTimeout(prefetchT);
+  const it = itemOf.get(e.target);
+  if (!it || !['movie', 'tv'].includes(it.type) || !it.id) return;
+  prefetchT = setTimeout(() => {
+    cached(`d:${it.type}:${it.id}`, () => api(`/api/details/${it.type}/${it.id}`), 30 * 60e3).catch(() => {});
+    if (it.backdrop_path) { const i = new Image(); i.src = img(it.backdrop_path, 'w1280'); i.decode?.().catch(() => {}); }
+  }, 350);
+});
 
 function sendState() {
   const tt = ui.textTarget.current;

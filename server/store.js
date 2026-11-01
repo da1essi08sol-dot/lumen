@@ -2,28 +2,6 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
-
-const STAR_WARS = [
-  [11, 'Star Wars', 1977], [1891, 'The Empire Strikes Back', 1980], [1892, 'Return of the Jedi', 1983],
-  [1893, 'Star Wars: Episode I - The Phantom Menace', 1999], [1894, 'Star Wars: Episode II - Attack of the Clones', 2002],
-  [1895, 'Star Wars: Episode III - Revenge of the Sith', 2005], [330459, 'Rogue One: A Star Wars Story', 2016],
-  [348350, 'Solo: A Star Wars Story', 2018], [140607, 'Star Wars: The Force Awakens', 2015],
-  [181808, 'Star Wars: The Last Jedi', 2017], [181812, 'Star Wars: The Rise of Skywalker', 2019],
-];
-const INDIANA_JONES = [
-  [85, 'Raiders of the Lost Ark', 1981], [87, 'Indiana Jones and the Temple of Doom', 1984],
-  [89, 'Indiana Jones and the Last Crusade', 1989], [217, 'Indiana Jones and the Kingdom of the Crystal Skull', 2008],
-  [335977, 'Indiana Jones and the Dial of Destiny', 2023],
-];
-
-function seedFolder(name, list) {
-  const now = Date.now();
-  return {
-    id: crypto.randomUUID(), name, createdAt: now, preset: true,
-    items: list.map(([id, title, year], i) => ({ id, type: 'movie', title, year, poster_path: null, backdrop_path: null, addedAt: now + i })),
-  };
-}
 
 function defaults() {
   return {
@@ -49,10 +27,11 @@ function defaults() {
       webBrowser: 'edge',
       background: { mode: 'artwork', image: null },
       showClock: true,
+      screensaver: true,
       homeBanner: { source: 'recommended', folderId: null }, // the big banner on Home: recommended films, or one of your folders
       reduceMotion: false,
     },
-    folders: [seedFolder('Star Wars', STAR_WARS), seedFolder('Indiana Jones', INDIANA_JONES)],
+    folders: [], // new installs start with an empty library (existing settings keep their folders)
     recent: [],
     watching: [],
     linkOverrides: {}, // pages you picked yourself for a film on a Watch website: { 'linkId|movie:123': url }

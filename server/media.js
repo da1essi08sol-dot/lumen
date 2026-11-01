@@ -98,4 +98,56 @@ async function stream(req, res, file) {
   }
 }
 
-module.exports = { roots, list, stream, recentVideos, isVideo, checkPath };
+// ---- subtitles: .srt / .vtt files next to a video ("Film.srt", "Film.en.srt", "Film.English.vtt", or a Subs folder)
+const SUB_EXT = new Set(['.srt', '.vtt']);
+const LANGS = { en: 'English', eng: 'English', english: 'English', fr: 'French', fre: 'French', fra: 'French', french: 'French', de: 'German', ger: 'German', deu: 'German', german: 'German',
+  es: 'Spanish', spa: 'Spanish', spanish: 'Spanish', it: 'Italian', ita: 'Italian', italian: 'Italian', nl: 'Dutch', dut: 'Dutch', dutch: 'Dutch', pt: 'Portuguese', por: 'Portuguese',
+  pl: 'Polish', pol: 'Polish', sv: 'Swedish', swe: 'Swedish', da: 'Danish', dan: 'Danish', no: 'Norwegian', nor: 'Norwegian', fi: 'Finnish', fin: 'Finnish', ja: 'Japanese', jpn: 'Japanese',
+  zh: 'Chinese', chi: 'Chinese', ko: 'Korean', kor: 'Korean', ar: 'Arabic', ara: 'Arabic', hi: 'Hindi', hin: 'Hindi', ru: 'Russian', rus: 'Russian', tr: 'Turkish', tur: 'Turkish' };
+const stem = (n) => n.replace(/\.[^.]+$/, '').toLowerCase();
+async function subtitles(video) {
+  const v = checkPath(video);
+  if (!v || !isVideo(v)) return [];
+  const dir = path.dirname(v), base = stem(path.basename(v));
+  const out = [];
+  // when the video is alone in its folder, every subtitle file there (or in its Subs folder) is for it
+  let alone = false; try { alone = (await fsp.readdir(dir)).filter(isVideo).length <= 1; } catch {}
+  const consider = async (folder) => {
+    let ents = []; try { ents = await fsp.readdir(folder, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      if (!e.isFile() || !SUB_EXT.has(path.extname(e.name).toLowerCase())) continue;
+      const s = stem(e.name);
+      if (!(s === base || s.startsWith(base + '.') || alone)) continue;
+      const tags = s.startsWith(base) ? s.slice(base.length).split('.').filter(Boolean) : s.split(/[._ -]/);
+      const lang = tags.map((t) => LANGS[t]).find(Boolean);
+      const extra = tags.includes('forced') ? ' (forced)' : tags.includes('sdh') || tags.includes('hi') ? ' (SDH)' : '';
+      out.push({ path: path.join(folder, e.name), label: `${lang || (s === base ? 'Subtitles' : e.name)}${extra}`, lang: lang || '' });
+    }
+  };
+  await consider(dir);
+  for (const sub of ['Subs', 'subs', 'Subtitles', 'subtitles']) await consider(path.join(dir, sub));
+  const seen = new Set();
+  return out.filter((s) => { const k = process.platform === 'win32' ? s.path.toLowerCase() : s.path; return !seen.has(k) && seen.add(k); }).sort((a, b) => a.label.localeCompare(b.label));
+}
+// a subtitle file, always as WebVTT (what the video player reads); SRT is converted on the fly
+async function subtitleVtt(file) {
+  const p = checkPath(file);
+  if (!p || !SUB_EXT.has(path.extname(p).toLowerCase())) throw Object.assign(new Error('Not a subtitle file'), { status: 400 });
+  const st = await fsp.stat(p);
+  if (st.size > 5e6) throw Object.assign(new Error('Subtitle file is too big'), { status: 400 });
+  let t = (await fsp.readFile(p)).toString('utf8').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+  if (/^WEBVTT/.test(t)) return t;
+  t = t.replace(/(\d\d:\d\d:\d\d),(\d\d\d)/g, '$1.$2').replace(/^\d+\n(?=\d\d:\d\d)/gm, '');
+  return 'WEBVTT\n\n' + t.trim() + '\n';
+}
+// the next video in the same folder (in name order, so episode 2 follows episode 1)
+async function nextVideo(video) {
+  const v = checkPath(video);
+  if (!v) return null;
+  const { entries } = await list(path.dirname(v));
+  const vids = entries.filter((e) => e.kind === 'video');
+  const i = vids.findIndex((e) => path.resolve(e.path) === v);
+  return i >= 0 && i < vids.length - 1 ? vids[i + 1] : null;
+}
+
+module.exports = { roots, list, stream, recentVideos, isVideo, checkPath, subtitles, subtitleVtt, nextVideo };
