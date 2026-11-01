@@ -1,0 +1,153 @@
+/* Lumen 2 — "the lit seat".
+   The screen is a darkened cinema; the one thing you're on is the thing that's lit. Everything else stays
+   quiet so that light is easy to follow from the sofa. Loaded after tv.css and overrides it.
+   Type: Bricolage Grotesque (bundled, works offline) — condensed and heavy for titles, normal width for menus. */
+@font-face {
+  font-family: 'Lumen Sans'; src: url('/shared/fonts/bricolage.ttf') format('truetype');
+  font-weight: 200 800; font-stretch: 75% 100%; font-display: block;
+}
+:root {
+  --ink: #f3f1ec;
+  --ink-2: rgba(243, 241, 236, .66);
+  --ink-3: rgba(243, 241, 236, .40);
+  --line: rgba(243, 241, 236, .12);
+  --line-2: rgba(243, 241, 236, .24);
+  --raise: rgba(243, 241, 236, .06);   /* the one surface colour for rows, settings and chips */
+  --panel: rgba(14, 14, 17, .94);      /* dialogs, toasts, the volume bar */
+  --radius: .55rem;
+  --font: 'Lumen Sans', 'Segoe UI Variable Display', 'Segoe UI', system-ui, sans-serif;
+  --glow: 0 0 0 .13rem rgba(var(--acc), .92), 0 0 2.2rem .2rem rgba(var(--acc), .22);
+}
+body { font-family: var(--font); font-optical-sizing: auto; letter-spacing: 0; }
+.display { font-stretch: 78%; font-weight: 760; letter-spacing: -.015em; line-height: .94; }
+
+/* ---------------- top bar: words, and a bar of light under the one you're on ---------------- */
+#topbar::before { content: ''; position: absolute; inset: 0 0 -3rem; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(0,0,0,.62) 0%, rgba(0,0,0,.28) 55%, rgba(0,0,0,0) 100%); }
+#tabs { background: none; border: 0; padding: .2rem 0 0; gap: .4rem; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.tab { height: 3.6rem; padding: 0 1.15rem; border-radius: .4rem; font-size: 1.5rem; font-weight: 520; color: var(--ink-3); background: none; }
+.tab::before { content: ''; position: absolute; left: 1.15rem; right: 1.15rem; bottom: .1rem; height: .2rem; border-radius: 1rem;
+  background: rgb(var(--acc)); box-shadow: 0 0 .9rem rgba(var(--acc), .9), 0 -.5rem 1.8rem rgba(var(--acc), .35);
+  transform: scaleX(0); opacity: 0; transition: transform 420ms var(--ease), opacity 300ms var(--ease-soft); }
+.tab.icon-only::before { left: .75rem; right: .75rem; }
+.tab.active { color: var(--ink); background: none; }
+.tab.active::before { transform: scaleX(.3); opacity: .5; box-shadow: none; }
+.tab.focused { color: var(--ink); background: none; transform: none; box-shadow: none; text-shadow: 0 0 1.4rem rgba(var(--acc), .55); }
+.tab.focused::before { transform: none; opacity: 1; }
+.tab.focused .ic { filter: drop-shadow(0 0 .6rem rgba(var(--acc), .7)); }
+
+.round { background: var(--raise); border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; color: var(--ink-2); }
+.round.focused { background: rgb(var(--acc)); color: var(--acc-ink); transform: scale(1.08); }
+.round.focused::after { opacity: 0; }
+#quitBtn.focused { background: #ff6961; color: #1a0000; }
+
+#clock .t { font-size: 1.8rem; font-weight: 640; font-stretch: 85%; letter-spacing: -.005em; }
+#clock .d { font-size: 1.1rem; color: var(--ink-3); font-weight: 450; }
+
+/* ---------------- hero: the title is the picture's caption, set big and condensed ---------------- */
+.hero .copy { width: 58rem; }
+.hero .greet { font-size: 1.6rem; font-weight: 500; color: var(--ink-2); margin-bottom: .4rem; }
+.hero .greet b { font-weight: 600; }
+.hero .eyebrow { text-transform: none; letter-spacing: 0; font-size: 1.35rem; font-weight: 500; color: var(--ink-3); margin-bottom: .8rem; }
+.hero h1, .detail h1 { font-stretch: 76%; font-weight: 780; letter-spacing: -.012em; line-height: .92; font-variation-settings: 'opsz' 96; text-wrap: balance; }
+.hero h1 { font-size: 7rem; max-width: 58rem; margin-bottom: 1.4rem; }
+.detail h1 { font-size: 7.4rem; max-width: 64rem; }
+.meta { font-size: 1.3rem; font-weight: 500; }
+.meta .cert { border-color: var(--line-2); border-radius: .25rem; }
+.overview { font-size: 1.45rem; line-height: 1.5; color: rgba(243, 241, 236, .78); }
+.detail .tagline { font-style: normal; font-weight: 450; color: var(--ink-2); }
+.dots i { background: rgba(243, 241, 236, .22); }
+.dots i.on { box-shadow: 0 0 .8rem rgba(var(--acc), .7); }
+.page-head h1 { font-size: 5rem; font-stretch: 78%; font-weight: 780; letter-spacing: -.012em; line-height: .95; }
+.crumbs { letter-spacing: 0; color: var(--ink-3); }
+
+/* ---------------- buttons: squared off, lit when chosen ---------------- */
+.btn { height: 4.2rem; border-radius: .6rem; padding: 0 1.8rem; font-size: 1.4rem; font-weight: 600; background: rgba(243, 241, 236, .09); border-color: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.btn.primary { background: var(--ink); color: #000; }
+.btn.focused { transform: scale(1.05); background: rgb(var(--acc)); color: var(--acc-ink); box-shadow: 0 .6rem 2.6rem rgba(var(--acc), .32); }
+.btn.glow::after { box-shadow: none; }
+.btn.danger.focused { background: #ff6961; color: #1a0000; }
+.btn.small { height: 3.4rem; border-radius: .5rem; }
+
+/* ---------------- rows & cards: the spotlight ---------------- */
+.row h2 { font-size: 1.75rem; font-weight: 620; font-stretch: 88%; color: var(--ink-3); text-shadow: none; }
+.row.active h2 { color: var(--ink); }
+.row h2 small { font-stretch: 100%; font-weight: 450; }
+/* everything in the row you're on dims a little, so the one you're on is the lit one */
+.card .art { box-shadow: 0 .5rem 1.4rem rgba(0,0,0,.5); transition: box-shadow var(--t-focus) var(--ease), filter 380ms var(--ease-soft); }
+.track:has(.card.focused) .card:not(.focused) .art,
+.grid:has(.card.focused) .card:not(.focused) .art { filter: brightness(.58) saturate(.8); }
+.card .art::before { box-shadow: inset 0 0 0 1px rgba(255,255,255,.06); }
+.card.focused { transform: scale(1.07); }
+.card.focused .art { filter: none; box-shadow: 0 0 0 .13rem rgba(var(--acc), .9), 0 1.8rem 3.2rem rgba(0,0,0,.7), 0 0 3.6rem rgba(var(--acc), .2); }
+/* light falling from above: a bright rim along the top edge */
+.card .art .sheen { background: linear-gradient(180deg, rgba(255,255,255,.26) 0%, rgba(255,255,255,.06) 9%, rgba(255,255,255,0) 26%); }
+/* …and a pool of your colour on the floor beneath it */
+.card::after { left: 6%; right: 6%; width: auto; top: auto; bottom: -1.9rem; height: 2.2rem; border-radius: 50%;
+  box-shadow: none; background: radial-gradient(closest-side, rgba(var(--acc), .5), rgba(var(--acc), 0)); filter: blur(.4rem); z-index: -1; }
+.card.cap-always::after { bottom: -4.2rem; }
+.card.focused::after { opacity: 1; animation: none; }
+.card.pressed::after { animation: poolPulse 460ms var(--ease-soft) !important; }
+@keyframes poolPulse { 0% { transform: scale(1); opacity: 1; } 45% { transform: scale(1.25, 1.6); } 100% { transform: scale(1); opacity: 1; } }
+.card .cap { font-size: 1.2rem; font-weight: 560; }
+.person .art { border-radius: 50%; }
+
+/* posters made for films with no artwork: a title card, set in the same condensed type */
+.fallback { background: linear-gradient(170deg, hsl(var(--h) 22% 20%) 0%, hsl(var(--h) 24% 9%) 75%, #000 100%); padding: 1.4rem; }
+.fallback::before { width: 2.2rem; height: .18rem; background: rgba(var(--acc), .75); }
+.fallback b { font-family: var(--font); font-weight: 760; font-stretch: 76%; font-size: 2.1rem; line-height: .96; letter-spacing: -.01em; }
+.wide .fallback b, .tile .fallback b { font-size: 2.3rem; }
+.fallback span { text-transform: none; letter-spacing: 0; font-size: 1.05rem; color: rgba(243, 241, 236, .6); }
+
+.badge-type { text-transform: none; letter-spacing: 0; font-size: .95rem; font-weight: 600; border-radius: .3rem; background: rgba(0,0,0,.66); }
+.progress { height: .28rem; background: rgba(255,255,255,.2); }
+.progress i { box-shadow: 0 0 .6rem rgba(var(--acc), .8); }
+.tile.service .art, .tile.action .art { background: var(--raise); border-color: transparent; backdrop-filter: none; }
+.tile.service.focused .art, .tile.action.focused .art { background: rgba(243, 241, 236, .14); }
+.folder-tile .label b { font-size: 1.9rem; font-stretch: 82%; font-weight: 720; }
+
+/* ---------------- detail page ---------------- */
+.avail .lbl { text-transform: none; letter-spacing: 0; font-size: 1.1rem; font-weight: 600; }
+.episode { background: transparent; border-radius: .7rem; }
+.episode.focused { background: var(--raise); box-shadow: inset .25rem 0 0 rgb(var(--acc)); transform: none; }
+.episode h3 { font-size: 1.55rem; font-weight: 620; }
+
+/* ---------------- settings ---------------- */
+.settings h3 { text-transform: none; letter-spacing: 0; font-size: 1.45rem; font-weight: 650; font-stretch: 88%; color: var(--ink-2); margin: 3.2rem 0 1rem 1.6rem; }
+.setting { border-radius: .55rem; background: rgba(243, 241, 236, .04); font-weight: 480; }
+.setting.focused { transform: none; box-shadow: 0 .4rem 2.2rem rgba(var(--acc), .28); }
+.toggle.on { background: rgb(var(--acc)); }
+.setting.focused .toggle.on { background: var(--acc-ink); }
+.setting.focused .toggle.on::after { background: rgb(var(--acc)); }
+
+/* ---------------- dialogs, keyboard, HUDs ---------------- */
+.modal { background: rgba(0,0,0,.66); }
+.sheet { background: var(--panel); border-radius: 1.1rem; border-color: var(--line); }
+.sheet h2 { font-size: 3rem; font-stretch: 80%; font-weight: 760; letter-spacing: -.01em; }
+.kb-field, .kb .key { border-radius: .5rem; }
+.kb .key { background: rgba(243, 241, 236, .05); }
+.kb .key.focused { transform: scale(1.1); }
+#toast { border-radius: .8rem; background: var(--panel); backdrop-filter: none; }
+#volume { border-radius: .9rem; background: var(--panel); backdrop-filter: none; }
+.empty { border: 0; background: rgba(243, 241, 236, .035); border-radius: .9rem; }
+.empty b { font-stretch: 85%; font-weight: 700; font-size: 2rem; }
+.error-box h2, .welcome h1 { font-stretch: 78%; font-weight: 780; letter-spacing: -.012em; }
+.welcome h1 { font-size: 6rem; line-height: .95; }
+.step { border-radius: .8rem; background: var(--raise); border-color: transparent; }
+#external .opening h2, #external h2 { font-stretch: 80%; font-weight: 760; }
+#player .ptitle { font-stretch: 85%; font-weight: 700; font-size: 2.4rem; }
+#player .rail .done { box-shadow: 0 0 .8rem rgba(var(--acc), .8); }
+
+/* new in 2.0: sleep timer badge, Up Next card, update note */
+.sleep-badge { position: fixed; z-index: 60; top: 2.6rem; right: 24rem; display: flex; align-items: center; gap: .6rem; padding: .55rem 1rem; border-radius: .5rem;
+  background: var(--raise); color: var(--ink-2); font-size: 1.15rem; font-weight: 560; font-variant-numeric: tabular-nums; opacity: 0; transition: opacity 400ms; pointer-events: none; }
+.sleep-badge.on { opacity: 1; }
+.sleep-badge .ic { width: 1.2rem; height: 1.2rem; }
+.upnext { position: fixed; z-index: 92; right: 4rem; bottom: 4rem; width: 34rem; padding: 1.4rem; border-radius: 1rem; background: var(--panel); border: 1px solid var(--line);
+  box-shadow: 0 2rem 5rem rgba(0,0,0,.6); opacity: 0; transform: translateY(1.5rem); transition: opacity 400ms, transform 500ms var(--ease); }
+.upnext.on { opacity: 1; transform: none; }
+.upnext small { display: block; color: var(--ink-3); font-size: 1.1rem; margin-bottom: .3rem; }
+.upnext b { display: block; font-size: 1.7rem; font-stretch: 85%; font-weight: 700; margin-bottom: 1rem; }
+.upnext .count { color: rgb(var(--acc)); font-variant-numeric: tabular-nums; }
+.track-pick .setting.current .val { color: rgb(var(--acc)); }
+html.rm .card::after, html.rm .tab::before { transition: none; }

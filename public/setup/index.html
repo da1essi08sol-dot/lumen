@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="/shared/logo.svg">
+<title>Lumen Setup</title>
+<style>
+  :root { color-scheme: dark; --line: rgba(255,255,255,.12); }
+  body { margin: 0; background: #000; color: #f5f5f7; font: 16px/1.5 -apple-system, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  main { max-width: 680px; margin: 0 auto; padding: 56px 24px 80px; }
+  h1 { font-size: 40px; letter-spacing: -.02em; margin: 0 0 6px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: rgba(235,235,245,.4); margin: 40px 0 12px; }
+  p { color: rgba(235,235,245,.65); margin: 0 0 14px; }
+  a { color: #fff; }
+  .card { background: #161618; border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  input[type=text], input[type=password] { width: 100%; box-sizing: border-box; height: 46px; border-radius: 10px; border: 1px solid var(--line); background: #0d0d0e; color: #fff; padding: 0 14px; font: inherit; outline: none; }
+  input:focus { border-color: rgba(255,255,255,.5); box-shadow: 0 0 0 3px rgba(255,255,255,.1); }
+  button { height: 42px; padding: 0 20px; border-radius: 99px; border: 0; background: #fff; color: #000; font: inherit; font-weight: 600; cursor: pointer; margin-top: 12px; }
+  button.ghost { background: #2a2a2d; color: #fff; }
+  .msg { margin-top: 10px; min-height: 22px; color: rgba(235,235,245,.7); }
+  .err { color: #ff6961; }
+  ol { color: rgba(235,235,245,.7); padding-left: 20px; } li { margin: 6px 0; } code { color: #fff; }
+  .row { display: flex; gap: 10px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Lumen Setup</h1>
+  <p>Use this page on the TV laptop with a mouse and keyboard. Everything here can also be done from the iPhone remote.</p>
+
+  <h2>1 · TMDB API key</h2>
+  <div class="card">
+    <ol>
+      <li>Create a free account at <a href="https://www.themoviedb.org/signup" target="_blank" rel="noopener">themoviedb.org/signup</a> and confirm your email.</li>
+      <li>Open <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">themoviedb.org/settings/api</a> → <b>Create</b> → <b>Developer</b>. Describe it as “personal TV interface”, non-commercial.</li>
+      <li>Copy either the <b>API Key</b> or the <b>API Read Access Token</b> and paste it below.</li>
+    </ol>
+    <input type="password" id="key" placeholder="Paste your TMDB key or token" autocomplete="off">
+    <button id="saveKey">Save and test</button>
+    <div class="msg" id="keyMsg"></div>
+  </div>
+
+  <h2>2 · Background picture</h2>
+  <div class="card">
+    <p>Upload a JPEG, PNG or WebP. It becomes the background immediately (switch styles in Settings on the TV).</p>
+    <input type="file" id="bg" accept="image/jpeg,image/png,image/webp,image/gif">
+    <div class="msg" id="bgMsg"></div>
+  </div>
+
+  <h2>3 · Website tile</h2>
+  <div class="card">
+    <p>Adds a tile to Free to Watch that opens the site full screen.</p>
+    <div class="row"><input type="text" id="scName" placeholder="Name"><input type="text" id="scUrl" placeholder="example.com"></div>
+    <button class="ghost" id="addSc">Add tile</button>
+    <div class="msg" id="scMsg"></div>
+  </div>
+
+  <h2>4 · Watch button link</h2>
+  <div class="card">
+    <p>Every film gets a Watch button that opens this address with the film’s name added — lowercase, spaces as “-”. a / is added at the end. <b>movies.com</b> opens movies.com/the-dark-knight/. Opens full screen in Brave (ad blocker on) if Brave is installed. Write {name} to put the name mid-address and {year} for the year. Leave empty and Watch does nothing.</p>
+    <div class="row"><input type="text" id="wlPattern" placeholder="movies.com"><input type="text" id="wlName" placeholder="Button name (optional)"></div>
+    <button class="ghost" id="saveWl">Save</button>
+    <div class="msg" id="wlMsg"></div>
+  </div>
+
+  <h2>Open the TV interface</h2>
+  <div class="card"><p>Normally it starts by itself (see the README). You can also open it here:</p><a href="/tv/">localhost/tv</a></div>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const post = async (url, body, headers) => {
+    const r = await fetch(url, { method: 'POST', headers: headers || { 'content-type': 'application/json' }, body: headers ? body : JSON.stringify(body) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'Error ' + r.status);
+    return d;
+  };
+  const say = (el, text, err) => { el.textContent = text; el.className = 'msg' + (err ? ' err' : ''); };
+  fetch('/api/config').then((r) => r.json()).then((c) => { if (c.keyHint) say($('keyMsg'), 'A key is saved (' + c.keyHint + ').'); if (c.watchLink) { $('wlPattern').value = c.watchLink.pattern || ''; $('wlName').value = c.watchLink.name || ''; } });
+  $('saveWl').onclick = async () => {
+    try { await post('/api/settings', { watchLink: { pattern: $('wlPattern').value, name: $('wlName').value } }); say($('wlMsg'), 'Saved.'); }
+    catch (e) { say($('wlMsg'), e.message, true); }
+  };
+  $('saveKey').onclick = async () => {
+    say($('keyMsg'), 'Checking with TMDB…');
+    try { await post('/api/settings', { tmdbKey: $('key').value.trim() }); $('key').value = ''; say($('keyMsg'), 'Saved. The TV interface will now load films.'); }
+    catch (e) { say($('keyMsg'), e.message, true); }
+  };
+  $('bg').onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    say($('bgMsg'), 'Uploading…');
+    try { await post('/api/backgrounds', f, { 'content-type': f.type, 'x-filename': encodeURIComponent(f.name) }); say($('bgMsg'), 'Uploaded and set as the background.'); }
+    catch (err) { say($('bgMsg'), err.message, true); }
+  };
+  $('addSc').onclick = async () => {
+    try { await post('/api/shortcuts', { name: $('scName').value, url: $('scUrl').value }); say($('scMsg'), 'Added.'); $('scName').value = $('scUrl').value = ''; }
+    catch (e) { say($('scMsg'), e.message, true); }
+  };
+</script>
+</body>
+</html>

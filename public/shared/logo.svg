@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="bg" cx=".3" cy=".2" r="1"><stop offset="0" stop-color="#e0243f"/><stop offset=".48" stop-color="#9e0f27"/><stop offset="1" stop-color="#3d0610"/></radialGradient>
+    <filter id="g" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+  <g filter="url(#g)" fill="#fff" font-family="Segoe UI Variable Display, Segoe UI, Inter, Helvetica, Arial, sans-serif">
+    <text x="58" y="190" font-size="170" font-weight="800" letter-spacing="-8">L</text>
+    <text x="146" y="190" font-size="64" font-weight="300" letter-spacing="-2">TV</text>
+  </g>
+</svg>

@@ -1,0 +1,46 @@
+{
+  "name": "lumen",
+  "productName": "Lumen",
+  "version": "2.0.0",
+  "description": "Lumen: a TV interface for Windows with an iPhone remote",
+  "author": "da1essi08sol-dot",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "electron/main.js",
+  "lumen": {
+    "updateRepo": "da1essi08sol-dot/lumen"
+  },
+  "scripts": {
+    "start": "electron .",
+    "server": "node server/index.js",
+    "test": "node --test tests/",
+    "dist": "electron-builder --win --publish never",
+    "release": "electron-builder --win --publish always"
+  },
+  "devDependencies": {
+    "electron": "44.8.0",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "tv.lumen.app",
+    "productName": "Lumen",
+    "asar": false,
+    "directories": { "output": "dist", "buildResources": "build" },
+    "files": ["electron/**", "server/**", "public/**", "build/icon.*", "package.json", "!**/*.md"],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build/icon.ico",
+      "artifactName": "Lumen-Setup-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Lumen",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [{ "provider": "github", "owner": "da1essi08sol-dot", "repo": "lumen", "releaseType": "release" }]
+  }
+}

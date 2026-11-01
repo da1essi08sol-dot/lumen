@@ -1,0 +1,30 @@
+# Builds the Windows installer (Lumen-Setup-<version>.exe) and publishes it as a GitHub release.
+# Runs when a version tag is pushed, e.g. v2.0.0. Lumen on every PC then finds the new release by itself.
+name: Release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install build tools
+        run: npm install --no-audit --no-fund
+      - name: Tests
+        run: npm test
+      - name: Check the tag matches the version
+        shell: bash
+        run: |
+          v=$(node -p "require('./package.json').version")
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "v$v" != "${GITHUB_REF_NAME}" ]; then echo "Tag ${GITHUB_REF_NAME} doesn't match package.json version $v"; exit 1; fi
+      - name: Build and publish the installer
+        run: npx electron-builder --win --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

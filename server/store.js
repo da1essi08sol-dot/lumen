@@ -1,0 +1,113 @@
+// Tiny JSON-file store with debounced, atomic writes.
+'use strict';
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+
+const STAR_WARS = [
+  [11, 'Star Wars', 1977], [1891, 'The Empire Strikes Back', 1980], [1892, 'Return of the Jedi', 1983],
+  [1893, 'Star Wars: Episode I - The Phantom Menace', 1999], [1894, 'Star Wars: Episode II - Attack of the Clones', 2002],
+  [1895, 'Star Wars: Episode III - Revenge of the Sith', 2005], [330459, 'Rogue One: A Star Wars Story', 2016],
+  [348350, 'Solo: A Star Wars Story', 2018], [140607, 'Star Wars: The Force Awakens', 2015],
+  [181808, 'Star Wars: The Last Jedi', 2017], [181812, 'Star Wars: The Rise of Skywalker', 2019],
+];
+const INDIANA_JONES = [
+  [85, 'Raiders of the Lost Ark', 1981], [87, 'Indiana Jones and the Temple of Doom', 1984],
+  [89, 'Indiana Jones and the Last Crusade', 1989], [217, 'Indiana Jones and the Kingdom of the Crystal Skull', 2008],
+  [335977, 'Indiana Jones and the Dial of Destiny', 2023],
+];
+
+function seedFolder(name, list) {
+  const now = Date.now();
+  return {
+    id: crypto.randomUUID(), name, createdAt: now, preset: true,
+    items: list.map(([id, title, year], i) => ({ id, type: 'movie', title, year, poster_path: null, backdrop_path: null, addedAt: now + i })),
+  };
+}
+
+function defaults() {
+  return {
+    version: 1,
+    settings: {
+      tmdbKey: '',
+      region: 'GB',
+      language: 'en-GB',
+      deviceName: 'Living Room TV',
+      lanHost: '',
+      services: { youtube: true, iplayer: true, itvx: true, channel4: true, my5: true, tubi: true, pluto: true },
+      shortcuts: [],
+      watchLink: { pattern: '', name: '' }, // the first of watchLinks (kept for older remotes)
+      watchLinks: [], // every Watch website: [{ id, pattern, name }] — each film shows a button for each
+      userName: '',
+      accent: 'white',
+      sound: { on: true, style: 'soft', volume: 0.6 },
+      blockPopups: true,
+      softwareDecode: false, // replaces the old 'smoothSkip', which was on by default and could hide the picture
+      intro: { anim: true, sound: true },
+      brightness: { level: 100, hw: false },
+      autoPlay: true,
+      webBrowser: 'edge',
+      background: { mode: 'artwork', image: null },
+      showClock: true,
+      homeBanner: { source: 'recommended', folderId: null }, // the big banner on Home: recommended films, or one of your folders
+      reduceMotion: false,
+    },
+    folders: [seedFolder('Star Wars', STAR_WARS), seedFolder('Indiana Jones', INDIANA_JONES)],
+    recent: [],
+    watching: [],
+    linkOverrides: {}, // pages you picked yourself for a film on a Watch website: { 'linkId|movie:123': url }
+    filmSites: {},     // the Watch website you last used for each film: { 'movie:123': linkId }
+    progress: {},
+    mediaFolders: [],
+    devices: [],
+    backgrounds: [],
+  };
+}
+
+function deepMerge(base, over) {
+  if (!over || typeof over !== 'object' || Array.isArray(over)) return over === undefined ? base : over;
+  const out = { ...base };
+  for (const k of Object.keys(over)) {
+    out[k] = base && typeof base[k] === 'object' && !Array.isArray(base[k]) && base[k] !== null
+      ? deepMerge(base[k], over[k]) : over[k];
+  }
+  return out;
+}
+
+class Store {
+  constructor(dir) {
+    this.dir = dir;
+    this.file = path.join(dir, 'store.json');
+    fs.mkdirSync(dir, { recursive: true });
+    let loaded = null;
+    try { loaded = JSON.parse(fs.readFileSync(this.file, 'utf8')); } catch (e) {
+      if (e.code !== 'ENOENT') {
+        // Corrupt file: keep a copy, start fresh rather than crashing the TV.
+        try { fs.copyFileSync(this.file, this.file + '.corrupt-' + Date.now()); } catch {}
+      }
+    }
+    this.data = loaded ? deepMerge(defaults(), loaded) : defaults();
+    if (loaded) { // arrays are replaced wholesale by deepMerge; keep the user's
+      for (const k of ['folders', 'recent', 'watching', 'mediaFolders', 'devices', 'backgrounds']) if (Array.isArray(loaded[k])) this.data[k] = loaded[k];
+    }
+    // one Watch website (older versions) → the list of Watch websites
+    const st = this.data.settings;
+    if (!Array.isArray(st.watchLinks)) st.watchLinks = [];
+    if (!st.watchLinks.length && st.watchLink?.pattern) st.watchLinks = [{ id: 'w1', pattern: st.watchLink.pattern, name: st.watchLink.name || '' }];
+    this._timer = null;
+    this.saveNow();
+  }
+  get d() { return this.data; }
+  save() {
+    clearTimeout(this._timer);
+    this._timer = setTimeout(() => this.saveNow(), 250);
+  }
+  saveNow() {
+    clearTimeout(this._timer);
+    const tmp = this.file + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(this.data, null, 2));
+    fs.renameSync(tmp, this.file);
+  }
+}
+
+module.exports = { Store };

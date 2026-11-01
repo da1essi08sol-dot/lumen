@@ -1,0 +1,17 @@
+/* Lumen 2 on the phone: the same type and light as the TV (see theme-tv.css). Loaded after phone.css / remote.css. */
+@font-face {
+  font-family: 'Lumen Sans'; src: url('/shared/fonts/bricolage.ttf') format('truetype');
+  font-weight: 200 800; font-stretch: 75% 100%; font-display: swap;
+}
+:root { --ink: #f3f1ec; --ink-2: rgba(243,241,236,.64); --ink-3: rgba(243,241,236,.38); --line: rgba(243,241,236,.1); }
+body { font-family: 'Lumen Sans', -apple-system, 'Segoe UI', system-ui, sans-serif; font-optical-sizing: auto; }
+.bar h1, .detail h1, .hero h2, .pane h2, .pairing h1 { font-stretch: 78%; font-weight: 780; letter-spacing: -.01em; line-height: .96; }
+.bar h1 { font-size: 34px; }
+.hero h2 { font-size: 42px; }
+.detail h1 { font-size: 40px; }
+.hero .eyebrow { text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 550; color: var(--ink-3); }
+.hero .dots i.on { background: rgb(var(--acc)); box-shadow: 0 0 6px rgba(var(--acc), .7); }
+.bar .brand b { font-weight: 800; font-stretch: 80%; }
+.tabbar button { position: relative; }
+.tabbar button.on::before { content: ''; position: absolute; top: -7px; left: 30%; right: 30%; height: 2px; border-radius: 2px; background: rgb(var(--acc)); box-shadow: 0 0 10px rgba(var(--acc), .9); }
+.btn { border-radius: 12px; }
