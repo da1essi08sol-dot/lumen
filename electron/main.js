@@ -65,7 +65,7 @@ function createWindow() {
   const d = tvDisplay();
   win = new BrowserWindow({
     x: d.bounds.x, y: d.bounds.y, width: d.bounds.width, height: d.bounds.height,
-    fullscreen: !TEST, frame: TEST, autoHideMenuBar: true, show: false, title: 'Lumen',
+    fullscreen: !TEST || process.env.LUMEN_RECORD === '1', frame: TEST && process.env.LUMEN_RECORD !== '1', autoHideMenuBar: true, show: false, title: 'Lumen',
     backgroundColor: '#050507', icon: path.join(ROOT, 'build', IS_WIN ? 'icon.ico' : 'icon.png'),
     webPreferences: { contextIsolation: true, sandbox: true, backgroundThrottling: false, spellcheck: false },
   });
@@ -79,6 +79,21 @@ function createWindow() {
       if (k.startsWith('wait')) return;
       for (const type of ['keyDown', 'keyUp']) win?.webContents.sendInputEvent({ type, keyCode: k });
     }, 5500 + i * 450));
+  });
+  // filming (automated checks and the promo video): a script of remote presses, pauses and markers
+  if (TEST && process.env.LUMEN_SCRIPT) win.webContents.once('did-finish-load', async () => {
+    const t0 = Date.now(), steps = JSON.parse(fs.readFileSync(process.env.LUMEN_SCRIPT, 'utf8'));
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    for (const st of steps) {
+      if (!win) return;
+      const [op, ...rest] = st.split(':'); const arg = rest.join(':');
+      if (op === 'w') await sleep(+arg);
+      else if (op === 'm') log(`MARK ${arg} ${(Date.now() - t0) / 1000}`);
+      else if (op === 'k') { for (const type of ['keyDown', 'keyUp']) win.webContents.sendInputEvent({ type, keyCode: arg }); await sleep(+process.env.LUMEN_KEYGAP || 650); }
+      else if (op === 't') { for (const ch of arg) { win.webContents.sendInputEvent({ type: 'keyDown', keyCode: ch }); win.webContents.sendInputEvent({ type: 'char', keyCode: ch }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode: ch }); await sleep(260); } }
+      else if (op === 'e') await win.webContents.executeJavaScript(arg).catch((e) => log('script eval failed', e.message));
+    }
+    log(`MARK end ${(Date.now() - t0) / 1000}`);
   });
   if (TEST && process.env.LUMEN_EVAL) win.webContents.once('did-finish-load', () => setTimeout(() => win?.webContents.executeJavaScript(process.env.LUMEN_EVAL).catch((e) => log('eval failed', e.message)), 5000));
   if (TEST && process.env.LUMEN_SHOT) win.webContents.once('did-finish-load', () => setTimeout(async () => {
