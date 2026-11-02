@@ -8,8 +8,8 @@
 }
 :root {
   --ink: #f3f1ec;
-  --ink-2: rgba(243, 241, 236, .66);
-  --ink-3: rgba(243, 241, 236, .40);
+  --ink-2: rgba(243, 241, 236, .74);
+  --ink-3: rgba(243, 241, 236, .56);
   --line: rgba(243, 241, 236, .12);
   --line-2: rgba(243, 241, 236, .24);
   --raise: rgba(243, 241, 236, .06);   /* the one surface colour for rows, settings and chips */

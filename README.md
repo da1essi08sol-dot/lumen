@@ -52,7 +52,7 @@ updates, open the data folder, or quit. Closing the TV window (Alt + F4) only hi
 - **Each film remembers its Watch website.** With more than one Watch website, a film's main button is the one you used last time.
 - **Game controllers.** Plug in or pair an Xbox or PlayStation controller: D-pad/stick moves, A selects, B goes back, Menu opens options.
 - **Screensaver.** After 10 minutes with nothing happening, film artwork drifts across the screen with the time (Settings › Screensaver).
-- **Snappier.** Holding a direction makes the highlight keep up instantly; films you rest on are prepared in the background so they open at once.
+- **Snappier.** Holding a direction makes the highlight keep up with the remote; films you rest on are prepared in the background so they open faster.
 - **Safer phone access.** Lumen only answers devices on your own home network, even if something on the router were opened up.
 - **Phone:** haptic taps on iPhone, the new type, and the sleep timer.
 - **New installs start with an empty library** (existing folders are kept).
@@ -123,7 +123,7 @@ When Lumen opens, the screen fills with your colour, a floor stretches away to t
 ## Pressing Watch: from film to playing in one step
 
 When you press **Watch** (or a Continue Watching card), Lumen:
-1. shows a loading screen with the film's title, which carries on inside the browser so you never see the site building;
+1. shows a loading screen with the film's title, which carries on inside the browser so you don't see the site building;
 2. blocks pop-up ads and stops the page being redirected to ad sites (Settings → Watch Button → Block Pop-ups & Redirects);
 3. presses play for you and makes the video fill the screen (Settings → Watch Button → Press Play & Full Screen);
 4. saves how far you got, so the film appears in **Continue Watching** on Home and jumps back to your spot next time. Press **Menu** on a Continue Watching card to remove it.
@@ -143,7 +143,7 @@ Settings → Watch Button → **Add an Ad-blocker Extension** opens Lumen's Brav
 - Glass d-pad with a lit rim in your colour; presses light up, ripple and give a tap you can feel. Swipe on it to move too.
 - Back, Home, Play/Pause and **Options** (the Menu button: add to a folder, or remove from Continue Watching).
 - Volume: **tap or drag the bar** to set it, **press and hold the bar** to mute or unmute, or tap or hold − / + to step.
-- Reliable presses: the phone checks its connection every few seconds and reconnects at once. Presses made while it reconnects are sent as soon as it's back instead of being lost, and quick volume presses are combined so the laptop never falls behind.
+- Reliable presses: the phone checks its connection every few seconds and reconnects at once. Presses made while it reconnects are sent as soon as it's back instead of being lost, and quick volume presses are combined so the laptop doesn't fall behind.
 
 ## Colours
 
@@ -169,6 +169,22 @@ TMDB only supplies information and artwork, not the films themselves. Lumen keep
 
 **Not included: TVIDS.net, ramoflix.net and doraby.com.** They stream films without the rights to them, so Lumen does not link films to them or to any similar site.
 
+
+## Privacy
+
+Lumen has no account, no adverts, no analytics and no tracking, and it sets no cookies. Everything it keeps stays on your
+computer. The details, including which outside services it talks to, are in [PRIVACY.md](PRIVACY.md).
+
+## Accessibility
+
+- Everything works with arrow keys, OK and Back (remote, keyboard or game controller); nothing needs a mouse.
+- Text and controls are designed for reading from a sofa, and faint text meets the WCAG AA contrast level on Lumen's dark background.
+- **Settings › Reduce Motion** turns animations down; Lumen also follows Windows' and the phone's own "reduce motion" settings.
+- Buttons that only show an icon have names for screen readers (Narrator on Windows, VoiceOver on iPhone).
+
+## Help and feedback
+
+Found a problem or have an idea? Open an issue on [GitHub](https://github.com/da1essi08sol-dot/lumen/issues).
 
 ## For developers
 

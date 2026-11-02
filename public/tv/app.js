@@ -152,7 +152,7 @@ function playIntro() {
 async function loadConfig() {
   try {
     Object.assign(cfg, await api('/api/config'));
-    document.documentElement.classList.toggle('rm', !!cfg.reduceMotion);
+    document.documentElement.classList.toggle('rm', !!cfg.reduceMotion || matchMedia('(prefers-reduced-motion: reduce)').matches); // Lumen's setting, or Windows' own
     sound.configure(cfg.sound || {});
     applyPersonal(); tick();
     applyBrightness(cfg.brightness?.level ?? 100);
@@ -267,15 +267,15 @@ async function libraryPicks() {
 function buildTopbar() {
   const tabs = $('#tabs');
   for (const [key, label, ic] of TABS) {
-    const t = el(`<div class="tab f ${ic ? 'icon-only' : ''}" data-tab="${key}">${ic ? icon(ic) : esc(label)}</div>`);
+    const t = el(`<div class="tab f ${ic ? 'icon-only' : ''}" data-tab="${key}" role="button" aria-label="${esc(label)}">${ic ? icon(ic) : esc(label)}</div>`);
     onSelect(t, () => switchTab(key, { focusContent: true }));
     tabs.appendChild(t);
   }
   // top-left: close Lumen (same as running "Stop Lumen")
-  $('#sysleft').appendChild(onSelect(el(`<div class="round f glow" id="quitBtn" title="Close Lumen">${icon('power')}</div>`), quitLumen));
+  $('#sysleft').appendChild(onSelect(el(`<div class="round f glow" id="quitBtn" title="Close Lumen" role="button" aria-label="Close Lumen">${icon('power')}</div>`), quitLumen));
   const sys = $('#sysbtns');
-  sys.appendChild(onSelect(el(`<div class="round f glow" id="remoteBtn">${icon('remote')}<span class="badge"></span></div>`), openPairing));
-  sys.appendChild(onSelect(el(`<div class="round f glow" data-tab="settings">${icon('settings')}</div>`), () => switchTab('settings', { focusContent: true })));
+  sys.appendChild(onSelect(el(`<div class="round f glow" id="remoteBtn" role="button" aria-label="Pair a phone remote">${icon('remote')}<span class="badge"></span></div>`), openPairing));
+  sys.appendChild(onSelect(el(`<div class="round f glow" data-tab="settings" role="button" aria-label="Settings">${icon('settings')}</div>`), () => switchTab('settings', { focusContent: true })));
   let t;
   tabs.addEventListener('nav-focus', (e) => {
     clearTimeout(t);
@@ -1074,6 +1074,7 @@ function settingsView() {
     item('Recently Viewed', 'Clear', async () => { const ok = await ui.confirmDialog({ title: 'Clear recently viewed?', text: 'Your folders are not affected.', ok: 'Clear', danger: true }); if (ok) { await api('/api/recent', { method: 'DELETE' }); invalidate('section:home'); ui.toast('Cleared'); } });
     item('System', esc(`${cfg.system?.platform || '?'} · volume ${cfg.system?.helper ? 'ready' : 'starting'} · VLC ${cfg.system?.vlc ? 'found' : 'not installed'}`), null);
     item('Update Lumen', icon('download') || 'Check', updateLumen, cfg.app ? 'Checks for a new version now. Your settings are kept' : 'Download the new Lumen-TV.zip on this laptop, then press here — your settings are kept');
+    item('Privacy', 'Read', () => ui.confirmDialog({ title: 'Lumen and your privacy', text: 'Lumen has no account, adverts, analytics or tracking, and sets no cookies. Your settings, folders, Continue Watching and paired phones stay on this computer. Lumen only contacts TMDB (film details and posters), GitHub (updates), YouTube (trailers) and the websites you open. The full details are in PRIVACY.md on Lumen’s GitHub page.', ok: 'OK', cancel: 'Close' }), 'What Lumen keeps, and who it talks to');
     item('Lumen', `Version ${esc(cfg.version || '1.0')}`, null, 'Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.');
     box.appendChild(list);
     s.appendChild(box);

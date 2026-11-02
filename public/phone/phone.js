@@ -139,7 +139,7 @@ const back = () => history.back();
 // ---------------------------------------------------------------- film page
 function openDetail(item) {
   if (!item || !['movie', 'tv'].includes(item.type)) return;
-  const v = el(`<div class="view sub detail"><button class="back">${icon('back')}</button><div class="bd">${item.backdrop_path ? `<img src="${esc(img(item.backdrop_path, 'w1280'))}" alt="">` : ''}</div>
+  const v = el(`<div class="view sub detail"><button class="back" aria-label="Back">${icon('back')}</button><div class="bd">${item.backdrop_path ? `<img src="${esc(img(item.backdrop_path, 'w1280'))}" alt="">` : ''}</div>
     <div class="body"><h1>${esc(item.title || '')}</h1><div class="sk" style="height:14px;width:60%;margin-top:10px"></div></div></div>`);
   v.querySelector('.back').onclick = back;
   pushSub(v);
@@ -236,7 +236,7 @@ function openInBrave(url, site = 'the website') {
 }
 async function openViewer(url, title, site, trusted = false) {
   const v = el(`<div class="view sub" style="display:flex;flex-direction:column;padding-bottom:0">
-    <div class="bar" style="position:relative"><button class="back" style="position:static;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.12)">${icon('close')}</button>
+    <div class="bar" style="position:relative"><button class="back" aria-label="Close" style="position:static;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.12)">${icon('close')}</button>
       <div style="flex:1;min-width:0"><div style="font-weight:750;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(title)}</div><div style="font-size:12px;color:var(--ink-3)">${esc(site)}</div></div>
       <button class="btn sm" data-brave>${icon('globe')}Brave</button></div>
     <div class="frame" style="flex:1;position:relative;background:#000"><div class="empty"><b>Opening ${esc(site)}…</b></div></div></div>`);
@@ -299,7 +299,7 @@ let npView = null;
 function openNowPlaying() {
   if (npView?.isConnected) return;
   const v = el(`<div class="view sub" style="display:flex;flex-direction:column;padding:calc(var(--top) + 14px) 22px calc(28px + var(--bot))">
-    <button class="back" style="align-self:flex-start;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.1);transform:rotate(-90deg)">${icon('back')}</button>
+    <button class="back" aria-label="Close Now Playing" style="align-self:flex-start;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.1);transform:rotate(-90deg)">${icon('back')}</button>
     <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:22px">
       <div style="text-align:center"><div style="font-size:12px;font-weight:750;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)">Now Playing on ${esc(cfg.deviceName || 'the TV')}</div>
         <div class="np-title" style="font-size:28px;font-weight:850;letter-spacing:-.025em;margin-top:8px;text-wrap:balance"></div><div class="np-sub" style="color:var(--ink-3);margin-top:6px;font-size:14px"></div></div>
@@ -307,16 +307,16 @@ function openNowPlaying() {
         <div class="np-scrub" style="position:relative;height:30px;touch-action:none"><div style="position:absolute;left:0;right:0;top:13px;height:5px;border-radius:5px;background:rgba(255,255,255,.18)"><i class="np-fill" style="display:block;height:100%;border-radius:5px;background:rgb(var(--acc));width:0"></i></div></div>
         <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums"><span class="np-t">0:00</span><span class="np-d">0:00</span></div>
         <div style="display:flex;justify-content:center;align-items:center;gap:26px;margin-top:18px">
-          <button data-c="-30" style="font-size:12px;font-weight:700;color:var(--ink-2);display:grid;place-items:center;gap:2px">${icon('rewind')}30</button>
-          <button data-c="-10" style="width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.1);display:grid;place-items:center;font-size:11px;font-weight:700">${icon('rewind')}</button>
-          <button data-c="toggle" class="np-pp" style="width:78px;height:78px;border-radius:50%;background:rgb(var(--acc));color:var(--acc-ink);display:grid;place-items:center"></button>
-          <button data-c="10" style="width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.1);display:grid;place-items:center;font-size:11px;font-weight:700">${icon('forward')}</button>
-          <button data-c="30" style="font-size:12px;font-weight:700;color:var(--ink-2);display:grid;place-items:center;gap:2px">${icon('forward')}30</button>
+          <button data-c="-30" aria-label="Back 30 seconds" style="font-size:12px;font-weight:700;color:var(--ink-2);display:grid;place-items:center;gap:2px">${icon('rewind')}30</button>
+          <button data-c="-10" aria-label="Back 10 seconds" style="width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.1);display:grid;place-items:center;font-size:11px;font-weight:700">${icon('rewind')}</button>
+          <button data-c="toggle" class="np-pp" aria-label="Play or pause" style="width:78px;height:78px;border-radius:50%;background:rgb(var(--acc));color:var(--acc-ink);display:grid;place-items:center"></button>
+          <button data-c="10" aria-label="Forward 10 seconds" style="width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.1);display:grid;place-items:center;font-size:11px;font-weight:700">${icon('forward')}</button>
+          <button data-c="30" aria-label="Forward 30 seconds" style="font-size:12px;font-weight:700;color:var(--ink-2);display:grid;place-items:center;gap:2px">${icon('forward')}30</button>
         </div>
       </div>
       <div class="np-wait empty" style="display:none;padding:10px"></div>
       <div style="display:flex;justify-content:center;gap:12px;margin-top:6px">
-        <button class="btn sm" data-v="down">${icon('volDown')}</button><button class="btn sm" data-v="mute">${icon('mute')}</button><button class="btn sm" data-v="up">${icon('volUp')}</button>
+        <button class="btn sm" data-v="down" aria-label="Volume down">${icon('volDown')}</button><button class="btn sm" data-v="mute" aria-label="Mute">${icon('mute')}</button><button class="btn sm" data-v="up" aria-label="Volume up">${icon('volUp')}</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
         <button class="btn np-save" style="display:none">${icon('link')}Use this page for the film</button>
@@ -454,7 +454,7 @@ async function libraryView(v) {
   } catch (e) { v.appendChild(errorBox(e, () => showTab('library'))); }
 }
 function openFolder(f) {
-  const v = el(`<div class="view sub"><div class="bar"><button class="back" style="width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.12)">${icon('back')}</button><h1 style="font-size:24px">${esc(f.name)}</h1></div><div class="grid"></div></div>`);
+  const v = el(`<div class="view sub"><div class="bar"><button class="back" aria-label="Back" style="width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.12)">${icon('back')}</button><h1 style="font-size:24px">${esc(f.name)}</h1></div><div class="grid"></div></div>`);
   v.querySelector('.back').onclick = back;
   const g = v.querySelector('.grid');
   if (!f.items.length) g.replaceWith(el('<div class="empty"><b>Nothing here yet</b>Open a film and press “Add to Folder”.</div>'));
