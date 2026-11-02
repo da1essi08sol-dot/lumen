@@ -32,6 +32,13 @@ Lumen sits in the system tray (bottom right, by the clock). From there you can s
 (handy when the laptop's own screen and the TV are both on), turn **Start Lumen when I sign in** on or off, check for
 updates, open the data folder, or quit. Closing the TV window (Alt + F4) only hides it; your phone can bring it back.
 
+## What's new in 2.0.2
+
+- **Privacy** page (Settings › About › Privacy, and [PRIVACY.md](PRIVACY.md)): what Lumen keeps and who it talks to.
+- Easier to read: faint text has stronger contrast on the TV and the phone.
+- Lumen follows your computer's and phone's own "reduce motion" setting.
+- Icon-only buttons have names for screen readers.
+
 ## What's new in 2.0.1
 
 - **Fonts.** Settings › Personal › **Fonts** changes the look of every title: **Classic** (the original Lumen look, now the default
