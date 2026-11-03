@@ -11,6 +11,7 @@ const ROOT = path.join(__dirname, '..');
 const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const IS_WIN = process.platform === 'win32';
 const TEST = process.env.LUMEN_APP_TEST === '1'; // automated checks: no tray, no update checks
+const TIMESCALE = TEST && Number(process.env.LUMEN_TIMESCALE) > 0 ? Math.min(1, Number(process.env.LUMEN_TIMESCALE)) : 1; // filming in slow motion
 
 app.setName('Lumen');
 if (IS_WIN) app.setAppUserModelId('tv.lumen.app');
@@ -67,7 +68,9 @@ function createWindow() {
     x: d.bounds.x, y: d.bounds.y, width: d.bounds.width, height: d.bounds.height,
     fullscreen: !TEST || process.env.LUMEN_RECORD === '1', frame: TEST && process.env.LUMEN_RECORD !== '1', autoHideMenuBar: true, show: false, title: 'Lumen',
     backgroundColor: '#050507', icon: path.join(ROOT, 'build', IS_WIN ? 'icon.ico' : 'icon.png'),
-    webPreferences: { contextIsolation: true, sandbox: true, backgroundThrottling: false, spellcheck: false },
+    webPreferences: TIMESCALE < 1
+      ? { contextIsolation: false, sandbox: false, preload: path.join(__dirname, 'timescale-preload.js'), backgroundThrottling: false, spellcheck: false } // filming only
+      : { contextIsolation: true, sandbox: true, backgroundThrottling: false, spellcheck: false },
   });
   win.removeMenu();
   win.loadURL(`http://localhost:${port}/tv/`);
@@ -83,14 +86,18 @@ function createWindow() {
   // filming (automated checks and the promo video): a script of remote presses, pauses and markers
   if (TEST && process.env.LUMEN_SCRIPT) win.webContents.once('did-finish-load', async () => {
     const t0 = Date.now(), steps = JSON.parse(fs.readFileSync(process.env.LUMEN_SCRIPT, 'utf8'));
-    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms / TIMESCALE));
+    if (TIMESCALE < 1) {
+      try { win.webContents.debugger.attach('1.3'); await win.webContents.debugger.sendCommand('Animation.enable'); await win.webContents.debugger.sendCommand('Animation.setPlaybackRate', { playbackRate: TIMESCALE }); }
+      catch (e) { log('slow motion failed', e.message); }
+    }
     for (const st of steps) {
       if (!win) return;
       const [op, ...rest] = st.split(':'); const arg = rest.join(':');
       if (op === 'w') await sleep(+arg);
-      else if (op === 'm') log(`MARK ${arg} ${(Date.now() - t0) / 1000}`);
+      else if (op === 'm') log(`MARK ${arg} ${((Date.now() - t0) / 1000 * TIMESCALE).toFixed(3)}`);
       else if (op === 'k') { for (const type of ['keyDown', 'keyUp']) win.webContents.sendInputEvent({ type, keyCode: arg }); await sleep(+process.env.LUMEN_KEYGAP || 650); }
-      else if (op === 't') { for (const ch of arg) { win.webContents.sendInputEvent({ type: 'keyDown', keyCode: ch }); win.webContents.sendInputEvent({ type: 'char', keyCode: ch }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode: ch }); await sleep(260); } }
+      else if (op === 't') { for (const ch of arg) { win.webContents.sendInputEvent({ type: 'keyDown', keyCode: ch }); win.webContents.sendInputEvent({ type: 'char', keyCode: ch }); win.webContents.sendInputEvent({ type: 'keyUp', keyCode: ch }); await sleep(170); } }
       else if (op === 'e') await win.webContents.executeJavaScript(arg).catch((e) => log('script eval failed', e.message));
     }
     log(`MARK end ${(Date.now() - t0) / 1000}`);

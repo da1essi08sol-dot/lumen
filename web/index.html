@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en-GB" class="ph" data-font="classic">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lumen">
+<meta name="description" content="Lumen: your films and TV, beautifully organised. Free, with no account and no adverts.">
+<title>Lumen</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="phone.css">
+<link rel="stylesheet" href="shared/theme-phone.css">
+<link rel="stylesheet" href="shared/fonts.css">
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+  import * as backend from './backend.js';
+  window.LUMEN_WEB = backend;
+  await import('./phone.js');
+  if ('serviceWorker' in navigator && location.protocol === 'https:' && !window.LumenNative) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>

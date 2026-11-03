@@ -1,0 +1,25 @@
+plugins { id 'com.android.application' }
+def pkg = new groovy.json.JsonSlurper().parse(file('../../package.json'))
+android {
+    namespace 'tv.lumen.browser'
+    compileSdk 34
+    defaultConfig {
+        applicationId 'tv.lumen.browser'
+        minSdk 26
+        targetSdk 34
+        versionName pkg.version
+        versionCode (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+    }
+    signingConfigs {
+        release {
+            // the build workflow supplies the key (an Actions secret if one is set, otherwise a key made for that build)
+            storeFile file('../lumen-release.keystore')
+            storePassword System.getenv('LUMEN_KEYSTORE_PASSWORD') ?: 'lumen-browser'
+            keyAlias 'lumen'
+            keyPassword System.getenv('LUMEN_KEYSTORE_PASSWORD') ?: 'lumen-browser'
+        }
+    }
+    buildTypes { release { minifyEnabled false; signingConfig signingConfigs.release } }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+dependencies { implementation 'androidx.webkit:webkit:1.11.0' }

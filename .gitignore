@@ -2,3 +2,10 @@ node_modules/
 dist/
 data/
 *.log
+dist-web/
+android/.gradle/
+android/build/
+android/app/build/
+android/app/src/main/assets/web/
+android/local.properties
+*.keystore

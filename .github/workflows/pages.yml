@@ -1,0 +1,34 @@
+# Publishes Lumen Web (the phone app, with no laptop needed) to GitHub Pages.
+name: Lumen Web
+on:
+  push:
+    branches: [main]
+    paths: ['web/**', 'public/phone/**', 'public/shared/**', 'server/tmdb.js', 'scripts/build-web.js', '.github/workflows/pages.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/build-web.js dist-web
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-web
+      - id: deploy
+        uses: actions/deploy-pages@v4

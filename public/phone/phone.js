@@ -3,7 +3,12 @@
 import { icon } from '/shared/icons.js';
 
 const TOKEN_KEY = 'lumen.token';
-const token = localStorage.getItem(TOKEN_KEY);
+// Lumen Web / Lumen Browser: the same app running on the phone by itself, with no laptop (see web/backend.js)
+const WEB = window.LUMEN_WEB || null;
+const NATIVE = window.LumenNative || null; // inside the Lumen Browser app for Android
+const IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const ANDROID = /Android/i.test(navigator.userAgent);
+const token = WEB ? 'web' : localStorage.getItem(TOKEN_KEY);
 if (!token) location.replace('/remote/?next=phone');
 
 const app = document.getElementById('app');
@@ -13,6 +18,7 @@ let cfg = { imageBase: 'https://image.tmdb.org/t/p', watchLinks: [] };
 const img = (p, size = 'w342') => (p ? `${cfg.imageBase}/${size}${p}` : null);
 
 async function api(path, opts = {}) {
+  if (WEB) return WEB.api(path, opts);
   const headers = { 'x-lumen-token': token || '' };
   let body = opts.body;
   if (body) { headers['content-type'] = 'application/json'; body = JSON.stringify(body); }
@@ -164,13 +170,33 @@ function openDetail(item) {
       <div class="watchlist"></div>
       <div class="btns extras"></div>
       <div class="more-rows"></div>
-      <p class="note">“On TV” starts it on ${esc(cfg.deviceName || 'the TV')} and turns this phone into its controls. “Here” plays it on this phone inside Lumen when the website allows it — otherwise it opens in your browser.</p>`;
+      <p class="note">${WEB ? esc(watchNote()) : `“On TV” starts it on ${esc(cfg.deviceName || 'the TV')} and turns this phone into its controls. “Here” plays it on this phone inside Lumen when the website allows it — otherwise it opens in your browser.`}</p>`;
     const ov = body.querySelector('.overview');
     if (ov.scrollHeight > ov.clientHeight + 4) { const m = el('<button class="more">More</button>'); m.onclick = () => { ov.classList.remove('clamp'); m.remove(); }; ov.after(m); }
     const wl = body.querySelector('.watchlist');
     const it = { id: d.id, type: d.type, poster_path: d.poster_path || null, backdrop_path: d.backdrop_path || null };
     const main = (resume && links.find((w) => w.id === resume.linkId)) || links[0];
-    for (const w of links) {
+    if (WEB) {
+      const lastSite = await api(`/api/film-site?type=${d.type}&id=${d.id}`).then((r) => links.find((w) => w.id === r.linkId)).catch(() => null);
+      const first = (resume && links.find((w) => w.id === resume.linkId)) || lastSite || links[0];
+      for (const w of [first, ...links.filter((x) => x !== first)].filter(Boolean)) {
+        const res = resume && resume.linkId === w.id;
+        const r = el(`<div class="wl ${w === first ? 'main' : ''}"><div class="lbl"><b>${res ? `Resume on ${esc(name(w))}` : `Watch on ${esc(name(w))}`}</b><small>${res ? esc(fmtLeft(resume)) : esc(watchHint())}</small></div>
+          <button class="btn ${w === first ? 'primary' : ''} sm" data-w>${icon('play')}Watch</button></div>`);
+        r.querySelector('[data-w]').onclick = async () => {
+          try { const q = new URLSearchParams({ link: w.id, title: d.title, year: d.year || '', type: d.type, id: d.id }); const u = await api(`/api/watch-url?${q}`); watchOut(u.url, d, name(w), w.id, res ? resume.t : 0); }
+          catch (e) { toast(e.message, 'info'); }
+        };
+        wl.appendChild(r);
+      }
+      for (const p of d.providers?.free || []) {
+        const r = el(`<div class="wl">${p.logo_path ? `<img class="plogo" src="${esc(img(p.logo_path, 'w92'))}" alt="">` : ''}<div class="lbl"><b>Free on ${esc(p.name)}</b><small>Opens ${esc(p.name)}</small></div><button class="btn sm" data-w>${icon('play')}Open</button></div>`);
+        r.querySelector('[data-w]').onclick = () => watchOut(p.url, d, p.name, null, 0);
+        wl.appendChild(r);
+      }
+      if (!links.length && !d.providers?.free?.length) { const r = el(`<div class="wl"><div class="lbl"><b>No Watch website yet</b><small>Add one in Settings and every film gets a Watch button</small></div><button class="btn sm">${icon('settings')}Settings</button></div>`); r.querySelector('button').onclick = () => { while (subs.length) history.back(); setTimeout(() => showTab('settings'), 50); }; wl.appendChild(r); }
+    }
+    for (const w of WEB ? [] : links) {
       const isMain = w === main, res = isMain && resume;
       const r = el(`<div class="wl ${isMain ? 'main' : ''}"><div class="lbl"><b>${res ? `Resume on ${esc(name(w))}` : `Watch on ${esc(name(w))}`}</b><small>${res ? esc(fmtLeft(resume)) : saved.includes(w.id) ? 'Uses the page you saved' : esc(name(w))}</small></div>
         <button class="btn ${isMain ? 'primary' : ''} sm" data-tv>${icon('tv')}On TV</button><button class="btn sm" data-here>${icon('play')}Here</button></div>`);
@@ -181,18 +207,18 @@ function openDetail(item) {
       };
       wl.appendChild(r);
     }
-    for (const p of d.providers?.free || []) {
+    for (const p of WEB ? [] : d.providers?.free || []) {
       const r = el(`<div class="wl">${p.logo_path ? `<img class="plogo" src="${esc(img(p.logo_path, 'w92'))}" alt="">` : ''}<div class="lbl"><b>Free on ${esc(p.name)}</b><small>Opens ${esc(p.name)}</small></div>
         <button class="btn sm" data-tv>${icon('tv')}On TV</button><button class="btn sm" data-here>${icon('play')}Here</button></div>`);
       r.querySelector('[data-tv]').onclick = () => playOnTv({ service: p.service, query: d.title }, p.name);
       r.querySelector('[data-here]').onclick = () => openViewer(p.url, d.title, p.name);
       wl.appendChild(r);
     }
-    if (!links.length && !d.providers?.free?.length) wl.appendChild(el(`<div class="wl"><div class="lbl"><b>No Watch website set</b><small>Add one on the TV: Settings › Watch Buttons</small></div></div>`));
+    if (!WEB && !links.length && !d.providers?.free?.length) wl.appendChild(el(`<div class="wl"><div class="lbl"><b>No Watch website set</b><small>Add one on the TV: Settings › Watch Buttons</small></div></div>`));
     const ex = body.querySelector('.extras');
     if (d.trailer) {
       const t = el(`<button class="btn sm">${icon('play')}Trailer</button>`);
-      t.onclick = () => sheet(`<h4>Trailer</h4><p>${esc(d.title)}</p><button class="opt" data-here>${icon('play')}Play here</button><button class="opt" data-tv>${icon('tv')}Play on the TV</button>`, (s, close) => {
+      t.onclick = () => WEB ? openViewer(`https://www.youtube-nocookie.com/embed/${d.trailer.key}?autoplay=1&playsinline=1&rel=0`, `${d.title} — Trailer`, 'YouTube', true) : sheet(`<h4>Trailer</h4><p>${esc(d.title)}</p><button class="opt" data-here>${icon('play')}Play here</button><button class="opt" data-tv>${icon('tv')}Play on the TV</button>`, (s, close) => {
         s.querySelector('[data-here]').onclick = () => { close(); openViewer(`https://www.youtube-nocookie.com/embed/${d.trailer.key}?autoplay=1&playsinline=1&rel=0`, `${d.title} — Trailer`, 'YouTube', true); };
         s.querySelector('[data-tv]').onclick = () => { close(); playOnTv({ youtubeVideo: d.trailer.key }, 'the trailer'); };
       });
@@ -211,6 +237,24 @@ function openDetail(item) {
     if (d.collection?.parts?.length > 1) { const r = row(d.collection.name || 'Collection', d.collection.parts.map(posterCard)); r.style.margin = '22px -20px 0'; more.appendChild(r); }
     if (d.recommendations?.length) { const r = row('More Like This', d.recommendations.map(posterCard)); r.style.margin = '22px -20px 0'; more.appendChild(r); }
   }
+}
+
+// ---------------------------------------------------------------- Lumen Web: where Watch goes
+// Inside Lumen Browser (Android): its own browser blocks ads and pop-ups, presses play and fills the screen.
+// On an iPhone: the Brave app (its Shields block ads). Anywhere else: a new tab.
+const watchHint = () => (NATIVE ? 'Ad-free, full screen' : IOS ? 'Opens in Brave, which blocks ads' : ANDROID ? 'Opens in Lumen Browser' : 'Opens in a new tab');
+const watchNote = () => (NATIVE ? 'Lumen Browser blocks ads and pop-ups, starts the film and fills the screen. Press Back to come back to Lumen.'
+  : IOS ? 'Watch opens the film in Brave, a free browser whose Shields block ads and pop-ups. Tap the video’s full-screen button there.'
+  : ANDROID ? 'Watch opens the film in Lumen Browser, which blocks ads and pop-ups and goes full screen by itself. It’s free: Settings › Get Lumen Browser.'
+  : 'Watch opens the film in a new tab.');
+const APK_URL = 'https://github.com/da1essi08sol-dot/lumen/releases/tag/android-latest';
+function watchOut(url, d, site, linkId, resumeAt) {
+  haptic();
+  const item = { id: d.id, type: d.type, title: d.title, year: d.year || null, poster_path: d.poster_path || null, backdrop_path: d.backdrop_path || null, linkId, resumeAt: resumeAt || 0 };
+  if (NATIVE) { NATIVE.watch(url, JSON.stringify(item)); return; }
+  if (IOS) { openInBrave(url, site); return; }
+  if (ANDROID) { location.href = `intent://watch?url=${encodeURIComponent(url)}#Intent;scheme=lumenbrowser;package=tv.lumen.browser;S.browser_fallback_url=${encodeURIComponent(url)};end`; return; }
+  window.open(url, '_blank', 'noopener');
 }
 
 // ---------------------------------------------------------------- watching on the phone, inside Lumen
@@ -376,7 +420,7 @@ function drawNowPlaying() {
 
 // ---------------------------------------------------------------- tabs
 let tab = 'home';
-const TABS = [['home', 'Home', 'home'], ['movies', 'Films', 'film'], ['tv', 'TV Shows', 'tv'], ['search', 'Search', 'search'], ['library', 'Library', 'folder'], ['remote', 'Remote', 'remote']];
+const TABS = [['home', 'Home', 'home'], ['movies', 'Films', 'film'], ['tv', 'TV Shows', 'tv'], ['search', 'Search', 'search'], ['library', 'Library', 'folder'], WEB ? ['settings', 'Settings', 'settings'] : ['remote', 'Remote', 'remote']];
 function shell() {
   app.innerHTML = `<main id="main"></main><nav class="tabbar">${TABS.map(([k, l, ic]) => `<button data-t="${k}">${icon(ic)}<span>${l}</span></button>`).join('')}</nav>`;
   app.querySelectorAll('.tabbar button').forEach((b) => (b.onclick = () => { haptic(); if (b.dataset.t === 'remote') { location.href = '/remote/'; return; } while (subs.length) history.back(); showTab(b.dataset.t, b.dataset.t === tab); }));
@@ -390,13 +434,13 @@ function showTab(t, again = false) {
   const v = el('<div class="view"></div>');
   main.appendChild(v);
   scrollTo(0, 0);
-  ({ home: () => sectionView(v, 'home', cfg.userName ? `${greeting()}, ${cfg.userName}` : greeting()), movies: () => sectionView(v, 'movies', 'Films'), tv: () => sectionView(v, 'tv', 'TV Shows'), search: () => searchView(v), library: () => libraryView(v) })[t]();
+  ({ home: () => sectionView(v, 'home', cfg.userName ? `${greeting()}, ${cfg.userName}` : greeting()), movies: () => sectionView(v, 'movies', 'Films'), tv: () => sectionView(v, 'tv', 'TV Shows'), search: () => searchView(v), library: () => libraryView(v), settings: () => settingsView(v) })[t]();
 }
 const greeting = () => { const h = new Date().getHours(); return h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; };
 const topBar = (title, right = '') => el(`<div class="bar">${title === 'brand' ? '<div class="brand"><b>Lumen</b><span>TV</span></div>' : `<h1>${esc(title)}</h1>`}${right}</div>`);
 
 async function sectionView(v, name, title) {
-  v.appendChild(topBar(name === 'home' ? 'brand' : title, name === 'home' ? `<div class="pill"><span class="dot ${pb.open ? 'on' : ''}"></span>${esc(cfg.deviceName || 'TV')}</div>` : ''));
+  v.appendChild(topBar(name === 'home' ? 'brand' : title, name === 'home' && !WEB ? `<div class="pill"><span class="dot ${pb.open ? 'on' : ''}"></span>${esc(cfg.deviceName || 'TV')}</div>` : ''));
   const sk = skeleton(); v.appendChild(sk);
   try {
     const [data, watching] = await Promise.all([cached('section:' + name, () => api(`/api/section/${name}`)), name === 'home' ? api('/api/watching').then((r) => r.items).catch(() => []) : []]);
@@ -462,17 +506,93 @@ function openFolder(f) {
   pushSub(v);
 }
 
-// ---------------------------------------------------------------- start
-async function start() {
-  try { cfg = { ...cfg, ...(await api('/api/config')) }; } catch (e) { app.innerHTML = ''; app.appendChild(errorBox(e, start)); return; }
-  if (cfg.font) document.documentElement.dataset.font = cfg.font;
+// ---------------------------------------------------------------- Lumen Web settings (no laptop)
+const ACCENT_SWATCHES = [['white', '#f2f2f2'], ['amber', '#ffc970'], ['rose', '#ffa0b6'], ['mint', '#80e8ba'], ['sky', '#82c6ff'], ['lilac', '#c4acff'], ['red', '#ff453a'], ['crimson', '#dc143c'], ['coral', '#ff7262']];
+const FONT_CHOICES = [['classic', 'Classic'], ['cinema', 'Cinema'], ['bold', 'Bold'], ['signage', 'Signage'], ['serif', 'Serif']];
+const REGIONS = [['GB', 'United Kingdom'], ['IE', 'Ireland'], ['US', 'United States'], ['CA', 'Canada'], ['AU', 'Australia'], ['NZ', 'New Zealand']];
+function applyLook() {
+  document.documentElement.dataset.font = cfg.font || 'classic';
   if (cfg.accentRgb) {
     const [r, g, b] = cfg.accentRgb.split(',').map(Number);
     document.documentElement.style.setProperty('--acc', `${r},${g},${b}`);
     document.documentElement.style.setProperty('--acc-ink', (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.55 ? '#000' : '#fff');
   }
-  shell();
-  showTab('home');
-  startPolling();
 }
+async function saveSettings(body, msg) {
+  try { await api('/api/settings', { method: 'POST', body }); cfg = { ...cfg, ...(await api('/api/config')) }; applyLook(); cache.clear(); if (msg) toast(msg); return true; }
+  catch (e) { toast(e.message, 'info'); return false; }
+}
+function settingsView(v) {
+  v.appendChild(topBar(cfg.hasKey ? 'Settings' : 'Welcome'));
+  const box = el('<div class="ws"></div>'); v.appendChild(box);
+  const key = el(`<section class="ws-card">
+    ${cfg.hasKey ? '<h3>TMDB key</h3><p>Lumen gets posters and film details from The Movie Database.</p>' : `<h3>Welcome to Lumen</h3>
+      <p>Lumen needs a free key from The Movie Database (TMDB) for posters and film details. It takes about five minutes:</p>
+      <ol><li>Make a free account at <a href="https://www.themoviedb.org/signup" target="_blank" rel="noopener">themoviedb.org/signup</a> and confirm your email.</li>
+      <li>Open <a href="https://www.themoviedb.org/settings/api" target="_blank" rel="noopener">Settings › API</a>, choose <b>Create › Developer</b>, and describe it as a personal TV app.</li>
+      <li>Copy the <b>API Read Access Token</b> (or the API Key) and paste it here.</li></ol>`}
+    <input class="field" id="tk" placeholder="${cfg.hasKey ? esc(cfg.keyHint) + ' (saved)' : 'Paste your TMDB key'}" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button class="btn primary" id="tks" style="width:100%">${cfg.hasKey ? 'Change Key' : 'Start Lumen'}</button>
+    <p class="small">Your key stays on this phone.</p></section>`);
+  key.querySelector('#tks').onclick = async () => {
+    const val = key.querySelector('#tk').value.trim(); if (!val) return;
+    const b = key.querySelector('#tks'); b.disabled = true; b.textContent = 'Checking…';
+    const ok = await saveSettings({ tmdbKey: val }, 'Key saved');
+    b.disabled = false; b.textContent = cfg.hasKey ? 'Change Key' : 'Start Lumen';
+    if (ok) showTab('home');
+  };
+  box.appendChild(key);
+  if (!cfg.hasKey) return;
+  // Watch websites
+  const links = [...(cfg.watchLinks || [])];
+  const wsec = el(`<section class="ws-card"><h3>Watch websites</h3><p>Every film gets a Watch button for each website. The film’s name is added to the address: <b>example.com/movie/</b> opens <b>example.com/movie/the-dark-knight/</b>. Put <b>{name}</b> anywhere else in the address to place it yourself.</p><div class="wlist"></div>
+    <input class="field" id="wp" placeholder="Website address, e.g. example.com/movie/" autocapitalize="off" autocomplete="off" spellcheck="false" inputmode="url">
+    <input class="field" id="wn" placeholder="Button name (optional)">
+    <button class="btn" id="wa" style="width:100%">${icon('plus')}Add Website</button></section>`);
+  const wl = wsec.querySelector('.wlist');
+  const drawLinks = () => {
+    wl.innerHTML = links.length ? '' : '<p class="small">None yet.</p>';
+    links.forEach((w, i) => { const r = el(`<div class="wrow"><div><b>${esc(w.name || w.pattern.replace(/^https?:\/\//, '').split('/')[0])}</b><small>${esc(w.pattern.replace(/^https?:\/\//, ''))}</small></div><button class="btn sm" aria-label="Remove">${icon('trash')}</button></div>`);
+      r.querySelector('button').onclick = async () => { links.splice(i, 1); if (await saveSettings({ watchLinks: links }, 'Removed')) drawLinks(); }; wl.appendChild(r); });
+  };
+  drawLinks();
+  wsec.querySelector('#wa').onclick = async () => {
+    const pat = wsec.querySelector('#wp').value.trim(); if (!pat) return;
+    links.push({ pattern: pat, name: wsec.querySelector('#wn').value.trim() });
+    if (await saveSettings({ watchLinks: links }, 'Website added')) { links.splice(0, links.length, ...cfg.watchLinks); wsec.querySelector('#wp').value = ''; wsec.querySelector('#wn').value = ''; drawLinks(); } else links.pop();
+  };
+  box.appendChild(wsec);
+  // how films open on this phone
+  const get = el(`<section class="ws-card"><h3>Ad-free watching</h3>${NATIVE ? '<p>You’re in Lumen Browser: it blocks ads, trackers and pop-ups, starts the film and fills the screen by itself.</p>'
+    : IOS ? '<p>On iPhone, Watch opens films in <b>Brave</b>, a free browser that blocks ads and pop-ups. Tap the video’s full-screen button there.</p><a class="btn" href="https://apps.apple.com/app/brave-private-web-browser/id1052879175" target="_blank" rel="noopener">Get Brave (free)</a>'
+    : ANDROID ? `<p>Get <b>Lumen Browser</b>, the free Android app: it blocks ads and pop-ups, starts the film and goes full screen by itself.</p><a class="btn primary" href="${APK_URL}" target="_blank" rel="noopener">${icon('download') || ''}Get Lumen Browser</a>`
+    : '<p>On a computer, install <b>Lumen</b> for Windows for the full TV experience.</p><a class="btn" href="https://github.com/da1essi08sol-dot/lumen/releases/latest" target="_blank" rel="noopener">Get Lumen for Windows</a>'}</section>`);
+  box.appendChild(get);
+  // you
+  const me = el(`<section class="ws-card"><h3>You</h3><input class="field" id="un" placeholder="Your name (for the greeting)" value="${esc(cfg.userName || '')}">
+    <label class="small" style="display:block;margin:6px 0">Region</label><select class="field" id="rg">${REGIONS.map(([k, n]) => `<option value="${k}" ${cfg.region === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
+    <button class="btn" id="mes" style="width:100%">Save</button></section>`);
+  me.querySelector('#mes').onclick = () => saveSettings({ userName: me.querySelector('#un').value, region: me.querySelector('#rg').value }, 'Saved');
+  box.appendChild(me);
+  // look
+  const look = el(`<section class="ws-card"><h3>Colour</h3><div class="sw">${ACCENT_SWATCHES.map(([k, c]) => `<button data-acc="${k}" class="${(cfg.accent || 'white') === k ? 'on' : ''}" style="background:${c}" aria-label="${k}"></button>`).join('')}</div>
+    <h3 style="margin-top:18px">Fonts</h3><div class="fchips">${FONT_CHOICES.map(([k, n]) => `<button data-font="${k}" data-fp="${k}" class="${(cfg.font || 'classic') === k ? 'on' : ''}"><span>${n}</span></button>`).join('')}</div></section>`);
+  look.querySelectorAll('[data-acc]').forEach((b) => (b.onclick = async () => { haptic(); await saveSettings({ accent: b.dataset.acc }); look.querySelectorAll('[data-acc]').forEach((x) => x.classList.toggle('on', x === b)); }));
+  look.querySelectorAll('[data-font]').forEach((b) => (b.onclick = async () => { haptic(); await saveSettings({ font: b.dataset.font }); look.querySelectorAll('[data-font]').forEach((x) => x.classList.toggle('on', x === b)); }));
+  box.appendChild(look);
+  box.appendChild(el(`<section class="ws-card"><h3>About</h3><p>Lumen keeps your settings, folders and Continue Watching on this phone. There’s no account, no adverts and no tracking.</p>
+    <p class="small">Film data and images: TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. <a href="https://github.com/da1essi08sol-dot/lumen/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy</a></p></section>`));
+}
+
+// ---------------------------------------------------------------- start
+async function start() {
+  try { cfg = { ...cfg, ...(await api('/api/config')) }; } catch (e) { app.innerHTML = ''; app.appendChild(errorBox(e, start)); return; }
+  applyLook();
+  shell();
+  if (WEB && !cfg.hasKey) { showTab('settings'); return; }
+  showTab('home');
+  if (!WEB) startPolling();
+}
+// Lumen Browser tells the page when a film it played has finished, so Continue Watching is up to date
+window.lumenRefresh = () => { cache.clear(); if (!subs.length) showTab(tab); };
 if (token) start();

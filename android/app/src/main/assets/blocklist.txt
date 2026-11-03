@@ -1,0 +1,15 @@
+# Built in by the Android build from the StevenBlack hosts list (ads and trackers). This short list is the fallback.
+doubleclick.net
+googlesyndication.com
+googleadservices.com
+adservice.google.com
+popads.net
+popcash.net
+propellerads.com
+adsterra.com
+exoclick.com
+juicyads.com
+trafficjunky.net
+taboola.com
+outbrain.com
+adnxs.com

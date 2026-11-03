@@ -20,6 +20,21 @@ so updating or reinstalling never touches them. Remove Lumen from **Settings ›
 your settings, folders, phone pairing and sign-ins across. The old folder is left as it was; delete it when you're happy.
 If it can't find it, use the tray icon › **Import settings from an older Lumen…**
 
+## Lumen on your phone, with no laptop
+
+Lumen also runs on a phone by itself: no laptop, server or pairing. Your library and settings stay on the phone.
+
+- **Android: Lumen Browser** (best). On your phone, download **Lumen-Browser.apk** from the
+  [Android release](https://github.com/da1essi08sol-dot/lumen/releases/tag/android-latest) and open it
+  (allow your browser to install apps if Android asks). It's Lumen with its own browser built in: pressing **Watch**
+  opens the film's website with ads, trackers, pop-ups and redirects blocked, starts the film, and fills the screen in
+  landscape. **Back** returns to Lumen and saves your place for Continue Watching.
+- **iPhone, or any phone: Lumen Web.** Open **https://da1essi08sol-dot.github.io/lumen/** and add it to your home screen
+  (Safari › Share › **Add to Home Screen**). **Watch** opens the film in the free **Brave** browser, which blocks ads by
+  itself. Apple doesn't allow apps from outside the App Store, so there's no iPhone version of Lumen Browser.
+
+Each phone needs its own free TMDB key; Lumen asks for it the first time and shows you how to get one.
+
 ## Updates
 
 Lumen checks for a new version every few hours. When there is one, the TV shows a note: go to **Settings › Update Lumen**

@@ -163,3 +163,24 @@ img { display: block; }
 .wl .lbl { flex: 1 1 calc(100% - 50px); }
 .wl .lbl b { white-space: normal; line-height: 1.2; }
 .wl .btn.sm { flex: 1 1 0; height: 42px; }
+
+/* ---------- Lumen Web settings ---------- */
+.ws { padding: 4px 16px 30px; display: flex; flex-direction: column; gap: 14px; }
+.ws-card { background: rgba(255,255,255,.05); border-radius: 18px; padding: 18px; }
+.ws-card h3 { margin: 0 0 8px; font-size: 18px; }
+.ws-card p, .ws-card ol { margin: 0 0 12px; color: var(--ink-2); font-size: 14.5px; line-height: 1.5; }
+.ws-card ol { padding-left: 20px; }
+.ws-card a:not(.btn) { color: rgb(var(--acc)); }
+.ws-card .btn { margin-top: 4px; text-decoration: none; }
+.ws-card .field { width: 100%; height: 46px; border-radius: 12px; border: 0; background: var(--card-2); color: var(--ink); padding: 0 14px; font-size: 16px; outline: 0; margin: 0 0 10px; }
+.ws-card select.field { appearance: none; }
+.ws-card .small, .ws .small { font-size: 12.5px; color: var(--ink-3); margin: 8px 0 0; }
+.wrow { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.wrow > div { flex: 1; min-width: 0; } .wrow b { display: block; font-size: 15px; } .wrow small { color: var(--ink-3); font-size: 12.5px; word-break: break-all; }
+.wlist { margin-bottom: 12px; }
+.sw { display: flex; flex-wrap: wrap; gap: 12px; }
+.sw button { width: 38px; height: 38px; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(0,0,0,.25); }
+.sw button.on { box-shadow: 0 0 0 3px #000, 0 0 0 5px #fff; }
+.fchips { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.fchips button { height: 52px; border-radius: 12px; background: rgba(255,255,255,.07); font-family: var(--tf); font-weight: var(--tw); font-stretch: var(--tst); font-size: 19px; }
+.fchips button.on { background: rgb(var(--acc)); color: var(--acc-ink); }

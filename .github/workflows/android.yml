@@ -1,0 +1,58 @@
+# Builds Lumen Browser for Android (Lumen-Browser.apk) and publishes it on the "android-latest" release.
+name: Android
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', 'web/**', 'public/phone/**', 'public/shared/**', 'server/tmdb.js', 'scripts/build-web.js', '.github/workflows/android.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Put Lumen inside the app
+        run: node scripts/build-web.js android/app/src/main/assets/web
+      - name: Ad and tracker blocklist (StevenBlack hosts)
+        run: |
+          if curl -fsSL https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts -o hosts; then
+            { echo "# StevenBlack hosts list, $(date -u +%F)"; grep -E '^0\.0\.0\.0 ' hosts | awk '{print $2}' | grep -v '^0\.0\.0\.0$'; } > android/app/src/main/assets/blocklist.txt
+          fi
+          wc -l android/app/src/main/assets/blocklist.txt
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.LUMEN_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then echo "$KEYSTORE_B64" | base64 -d > android/lumen-release.keystore
+          else keytool -genkeypair -keystore android/lumen-release.keystore -alias lumen -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass lumen-browser -keypass lumen-browser -dname "CN=Lumen"; fi
+      - name: Build the app
+        env:
+          LUMEN_KEYSTORE_PASSWORD: ${{ secrets.LUMEN_KEYSTORE_PASSWORD }}
+        run: gradle -p android assembleRelease --no-daemon
+      - name: Name it
+        run: cp android/app/build/outputs/apk/release/app-release.apk Lumen-Browser.apk
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: Lumen Browser for Android
+          make_latest: 'false'
+          files: Lumen-Browser.apk
+          body: |
+            **Lumen Browser for Android**: Lumen on your phone with no laptop needed, plus its own browser that blocks ads, pop-ups and redirects and plays films full screen.
+
+            1. On your Android phone, tap **Lumen-Browser.apk** below to download it.
+            2. Open it. If Android asks, allow your browser to install apps.
+            3. Open Lumen and add your free TMDB key in Settings.
