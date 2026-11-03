@@ -613,6 +613,13 @@ function settingsView(v) {
   look.querySelectorAll('[data-acc]').forEach((b) => (b.onclick = async () => { haptic(); await saveSettings({ accent: b.dataset.acc }); look.querySelectorAll('[data-acc]').forEach((x) => x.classList.toggle('on', x === b)); }));
   look.querySelectorAll('[data-font]').forEach((b) => (b.onclick = async () => { haptic(); await saveSettings({ font: b.dataset.font }); look.querySelectorAll('[data-font]').forEach((x) => x.classList.toggle('on', x === b)); }));
   box.appendChild(look);
+  // the TV interface on this phone (turn it sideways): same artwork, loading screens and detail as Lumen on the TV
+  if (WEB) {
+    const tvl = el(`<section class="ws-card"><h3>TV look</h3><p>Use Lumen’s full TV interface on this phone — the same artwork, loading screens and detail as on the TV, with touch. Turn your phone sideways to use it.</p>
+      <button class="btn primary" id="tvl" style="width:100%">${icon('tv')}Use the TV Look</button></section>`);
+    tvl.querySelector('#tvl').onclick = () => { try { localStorage.setItem('lumen.look', 'tv'); } catch {} location.href = 'tv/'; };
+    box.appendChild(tvl);
+  }
   const tr = el(`<section class="ws-card"><h3>Bring from your laptop</h3>
     <p>On your laptop's phone page (Lumen's remote), open <b>Library</b> and tap <b>Copy My Lumen</b>. Then come back here.</p>
     <button class="btn primary" id="tp" style="width:100%">Paste and Bring Across</button>

@@ -195,6 +195,8 @@ function brightnessDialog() { return new Promise((done) => { // resolves when th
   draw(); m.open(plus);
 }); }
 
+// Lumen without the laptop (the iPhone app's TV, or a phone turned sideways): the computer-only parts are hidden
+const onPhone = () => !!cfg.system?.web;
 const accentRgbNow = () => getComputedStyle(document.documentElement).getPropertyValue('--acc').replace(/\s/g, '') || '255,255,255';
 
 // ---- personal: accent colour + greeting
@@ -272,7 +274,7 @@ function buildTopbar() {
     tabs.appendChild(t);
   }
   // top-left: close Lumen (same as running "Stop Lumen")
-  $('#sysleft').appendChild(onSelect(el(`<div class="round f glow" id="quitBtn" title="Close Lumen" role="button" aria-label="Close Lumen">${icon('power')}</div>`), quitLumen));
+  if (!window.LUMEN_WEB) $('#sysleft').appendChild(onSelect(el(`<div class="round f glow" id="quitBtn" title="Close Lumen" role="button" aria-label="Close Lumen">${icon('power')}</div>`), quitLumen));
   const sys = $('#sysbtns');
   sys.appendChild(onSelect(el(`<div class="round f glow" id="remoteBtn" role="button" aria-label="Pair a phone remote">${icon('remote')}<span class="badge"></span></div>`), openPairing));
   sys.appendChild(onSelect(el(`<div class="round f glow" data-tab="settings" role="button" aria-label="Settings">${icon('settings')}</div>`), () => switchTab('settings', { focusContent: true })));
@@ -999,12 +1001,12 @@ function settingsView() {
       await save({ homeBanner: opts[(Math.max(0, cur) + 1) % opts.length] });
       invalidate('section:home');
     }, 'Press to switch between films picked for you (a fresh mix each time) and each of your folders');
-    item('Also Use the TV’s Own Backlight', tog(br.hw), () => save({ brightness: { hw: !br.hw } }), 'Only some TVs allow this over HDMI. Lumen’s own dimming always works');
+if (!onPhone())     item('Also Use the TV’s Own Backlight', tog(br.hw), () => save({ brightness: { hw: !br.hw } }), 'Only some TVs allow this over HDMI. Lumen’s own dimming always works');
 
     sec('General');
     item('Sleep Timer', esc(sleepLabel()), sleepDialog, 'Fades the sound out, stops what’s playing and turns the screen off. Also on your phone’s Now Playing');
     item('TV Name', esc(cfg.deviceName), async () => { const n = await ui.promptDialog({ title: 'TV Name', value: cfg.deviceName }); if (n) await save({ deviceName: n }); }, 'Shown on your iPhone remote');
-    item('TMDB API Key', cfg.mock ? 'Demo data' : cfg.keyHint ? esc(cfg.keyHint) : 'Not set', enterKeyDialog, 'Easiest to paste on your phone (Setup tab) or at localhost:' + cfg.port + '/setup');
+    item('TMDB API Key', cfg.mock ? 'Demo data' : cfg.keyHint ? esc(cfg.keyHint) : 'Not set', enterKeyDialog, onPhone() ? 'Your free key from themoviedb.org' : 'Easiest to paste on your phone (Setup tab) or at localhost:' + cfg.port + '/setup');
     const regions = ['GB', 'IE', 'US', 'CA', 'AU'];
     item('Region', esc(cfg.region), async () => { await save({ region: regions[(regions.indexOf(cfg.region) + 1) % regions.length] }); }, 'Controls which free services and age ratings are shown');
     item('Show Clock', tog(cfg.showClock), () => save({ showClock: !cfg.showClock }));
@@ -1012,7 +1014,7 @@ function settingsView() {
     item('Screensaver', tog(cfg.screensaver !== false), () => save({ screensaver: cfg.screensaver === false }), 'After 10 minutes with nothing happening, film artwork drifts across the screen with the time');
 
     sec('Background');
-    const modes = [['artwork', 'Film Artwork'], ['custom', 'My Picture'], ['graphite', 'Graphite'], ['black', 'Black']];
+    const modes = [['artwork', 'Film Artwork'], ...(onPhone() ? [] : [['custom', 'My Picture']]), ['graphite', 'Graphite'], ['black', 'Black']];
     const cur = modes.find((m) => m[0] === cfg.background.mode) || modes[0];
     item('Style', esc(cur[1]), async () => {
       let next = modes[(modes.indexOf(cur) + 1) % modes.length];
@@ -1027,11 +1029,11 @@ function settingsView() {
         if (choice === 'delete') { await api(`/api/backgrounds/${bg.id}`, { method: 'DELETE' }); ui.toast('Picture deleted', 'trash'); }
       });
     }
-    item('Add a Picture', icon('image'), async () => ui.confirmDialog({ title: 'Add a background picture', text: `On your iPhone remote, open the Backgrounds tab and choose a photo. Or on this laptop, open localhost:${cfg.port}/setup and upload one. It appears here straight away.`, ok: 'OK', cancel: 'Close' }), 'Upload from your iPhone or this laptop');
+if (!onPhone())     item('Add a Picture', icon('image'), async () => ui.confirmDialog({ title: 'Add a background picture', text: `On your iPhone remote, open the Backgrounds tab and choose a photo. Or on this laptop, open localhost:${cfg.port}/setup and upload one. It appears here straight away.`, ok: 'OK', cancel: 'Close' }), 'Upload from your iPhone or this laptop');
 
     sec('Free Services');
     for (const [k, name] of Object.entries(cfg.serviceNames || {})) item(name, tog(cfg.services[k]), () => save({ services: { [k]: !cfg.services[k] } }));
-    item('Open Websites In', cfg.webBrowserInUse === 'brave' ? 'Brave' : 'Microsoft Edge', async () => {
+if (!onPhone())     item('Open Websites In', cfg.webBrowserInUse === 'brave' ? 'Brave' : 'Microsoft Edge', async () => {
       if (cfg.webBrowserInUse !== 'brave' && !cfg.system?.brave) return ui.toast('Brave isn’t installed on this computer', 'info');
       await save({ webBrowser: cfg.webBrowserInUse === 'brave' ? 'edge' : 'brave' });
     }, 'Every website and the Watch button use this one browser, so you only sign in once. Switching browser means signing in again');
@@ -1041,9 +1043,9 @@ function settingsView() {
       `e.g. The Dark Knight opens ${esc(watchUrl(w.pattern, 'The Dark Knight', 2008).replace(/^https?:\/\//, ''))}`);
     item('Add a Watch Website', icon('plus'), addWatchLink, watchLinks().length ? 'Every film gets a “Watch on …” button for each website' : 'Every film gets a Watch button that opens this website + the film’s name. None set: no Watch button');
     item('Press Play & Full Screen', tog(cfg.autoPlay !== false), () => save({ autoPlay: cfg.autoPlay === false }), 'Starts the film by itself and fills the screen, behind a loading screen');
-    item('Software Video Decoding', tog(cfg.softwareDecode === true), () => save({ softwareDecode: cfg.softwareDecode !== true }), 'Only if skipping still turns the picture black. If a film then has sound but no picture, Lumen turns this off and reopens it');
+if (!onPhone())     item('Software Video Decoding', tog(cfg.softwareDecode === true), () => save({ softwareDecode: cfg.softwareDecode !== true }), 'Only if skipping still turns the picture black. If a film then has sound but no picture, Lumen turns this off and reopens it');
     item('Block Pop-ups & Redirects', tog(cfg.blockPopups !== false), () => save({ blockPopups: cfg.blockPopups === false }), 'Stops ads opening new windows or taking over the page');
-    item('Add an Ad-blocker Extension', icon('plus'), async () => {
+if (!onPhone())     item('Add an Ad-blocker Extension', icon('plus'), async () => {
       const ok = await ui.confirmDialog({ title: 'Add an ad blocker', text: 'Lumen’s own Brave opens in a normal window on its extension store. Install the same ad blocker you use in your own Brave (use the phone’s Trackpad and Keyboard tabs), then press Home on the remote. It stays installed for everything Lumen opens.', ok: 'Open Brave', cancel: 'Not now' });
       if (ok) api('/api/open', { method: 'POST', body: { adblockSetup: true } }).catch((e) => ui.toast(e.message, 'info'));
     }, 'Lumen’s Brave is separate from your own, so extensions need adding once');
@@ -1059,21 +1061,24 @@ function settingsView() {
       const ok = await ui.confirmDialog({ title: `Unpair ${d.name}?`, text: 'It will need to scan the code again to control this TV.', ok: 'Unpair', danger: true });
       if (ok) await api(`/api/devices/${d.id}`, { method: 'DELETE' });
     });
-    item('Pair a Remote', icon('remote'), openPairing, `Phone address: ${cfg.lanHost}:${cfg.port}`);
+    item('Pair a Remote', icon('remote'), openPairing, onPhone() ? (cfg.box ? `Another phone on this Wi-Fi: ${cfg.lanHost}` : 'Open Lumen in the iPhone app with the TV connected to pair a remote') : `Phone address: ${cfg.lanHost}:${cfg.port}`);
 
+    if (!onPhone()) {
     sec('Video Folders');
     for (const p of roots.pinned || []) item(p, 'Remove', async () => { await api('/api/media/unpin', { method: 'POST', body: { path: p } }); });
     item('Browse Drives', icon('drive'), () => switchTab('library', { focusContent: true }), 'Add folders from My Library → Videos on This Computer');
+    }
 
     if (cfg.app) {
       sec('This Computer');
       item('Start Lumen When I Sign In', tog(cfg.app.autostart), async () => { await api('/api/app', { method: 'POST', body: { autostart: !cfg.app.autostart } }).catch((e) => ui.toast(e.message, 'info')); }, 'Lumen opens on the TV whenever this computer starts');
       item('Updates', cfg.app.updates?.github ? 'Automatic' : 'From Downloads', null, cfg.app.updates?.github ? 'Lumen checks for new versions every few hours and tells you here' : 'Put a new Lumen installer in Downloads, then press Update Lumen');
     }
+    if (window.LUMEN_WEB && !window.LumenBox && touchy()) { sec('This Phone'); item('Use the Phone Layout', icon('remote'), () => { try { localStorage.setItem('lumen.look', 'phone'); } catch {} location.href = '../?phone'; }, 'The upright, touch-first layout. You can come back to the TV look from its Settings'); }
     sec('About');
     item('Recently Viewed', 'Clear', async () => { const ok = await ui.confirmDialog({ title: 'Clear recently viewed?', text: 'Your folders are not affected.', ok: 'Clear', danger: true }); if (ok) { await api('/api/recent', { method: 'DELETE' }); invalidate('section:home'); ui.toast('Cleared'); } });
-    item('System', esc(`${cfg.system?.platform || '?'} · volume ${cfg.system?.helper ? 'ready' : 'starting'} · VLC ${cfg.system?.vlc ? 'found' : 'not installed'}`), null);
-    item('Update Lumen', icon('download') || 'Check', updateLumen, cfg.app ? 'Checks for a new version now. Your settings are kept' : 'Download the new Lumen-TV.zip on this laptop, then press here — your settings are kept');
+if (!onPhone())     item('System', esc(`${cfg.system?.platform || '?'} · volume ${cfg.system?.helper ? 'ready' : 'starting'} · VLC ${cfg.system?.vlc ? 'found' : 'not installed'}`), null);
+if (!onPhone())     item('Update Lumen', icon('download') || 'Check', updateLumen, cfg.app ? 'Checks for a new version now. Your settings are kept' : 'Download the new Lumen-TV.zip on this laptop, then press here — your settings are kept');
     item('Privacy', 'Read', () => ui.confirmDialog({ title: 'Lumen and your privacy', text: 'Lumen has no account, adverts, analytics or tracking, and sets no cookies. Your settings, folders, Continue Watching and paired phones stay on this computer. Lumen only contacts TMDB (film details and posters), GitHub (updates), YouTube (trailers) and the websites you open. The full details are in PRIVACY.md on Lumen’s GitHub page.', ok: 'OK', cancel: 'Close' }), 'What Lumen keeps, and who it talks to');
     item('Lumen', `Version ${esc(cfg.version || '1.0')}`, null, 'Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.');
     box.appendChild(list);
@@ -1131,7 +1136,7 @@ async function openPairing() {
   if (pairModal) return;
   let p;
   try { p = await api('/api/pair/start', { method: 'POST' }); } catch (e) { return ui.toast(e.message, 'info'); }
-  pairModal = ui.modal(`<h2>Use Your iPhone as a Remote</h2><p>Your phone and this laptop need to be on the same Wi-Fi.</p>
+  pairModal = ui.modal(`<h2>Use Your iPhone as a Remote</h2><p>Your phone and ${onPhone() ? 'the iPhone that’s showing Lumen' : 'this laptop'} need to be on the same Wi-Fi.</p>
     <div class="pair"><div class="qr">${p.qr}</div><div><ol><li>Open the <b>Camera</b> on your iPhone</li><li>Point it at this code and tap the link</li><li>Tap <b>Pair</b> — then <b>Start Remote</b></li></ol>
     <div class="code">${p.code}</div><div class="addr">Or open ${esc(p.host)}/remote in Safari and enter this code · expires in 5 minutes</div></div></div>
     <div class="actions" data-group="row"></div>`, { wide: true, onClose: () => { pairModal = null; clearTimeout(exp); } });
@@ -1281,6 +1286,52 @@ addEventListener('wheel', (e) => {
   if (sideways && hoverRow && !hoverRow.contains(nav.focused())) { const first = hoverRow.querySelector('.f'); if (first) nav.focus(first); }
   dispatch(k);
 }, { passive: false });
+
+// ---------------- touch (Lumen on a phone or iPad) ----------------
+// Tap something to select it. Swipe up/down to move through the rows and sideways along a row (or the big banner);
+// a longer swipe moves further. Swipe in from the left edge, or tap the back button top left, to go back.
+const touchy = () => matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+let touch0 = null;
+function nearestIn(group, x, y) {
+  let best = null, bd = Infinity;
+  for (const f of group.querySelectorAll('.f')) { const r = f.getBoundingClientRect(); const d = Math.hypot(r.left + r.width / 2 - x, r.top + r.height / 2 - y); if (d < bd) { bd = d; best = f; } }
+  return best;
+}
+addEventListener('touchstart', (e) => {
+  if (e.touches.length !== 1) { touch0 = null; return; }
+  document.body.classList.add('touch');
+  const t = e.touches[0]; touch0 = { x: t.clientX, y: t.clientY, target: e.target };
+}, { passive: true });
+addEventListener('touchmove', (e) => { if (touch0 && !app.external && !e.target.closest?.('input, textarea')) e.preventDefault(); }, { passive: false });
+addEventListener('touchend', (e) => {
+  const s0 = touch0; touch0 = null; if (!s0 || app.external) return;
+  const t = e.changedTouches[0], dx = t.clientX - s0.x, dy = t.clientY - s0.y;
+  if (Math.hypot(dx, dy) < 14) return;                                   // a tap: the click handler selects it
+  if (player.isOpen() && !ui.topModal()) { if (Math.abs(dx) > Math.abs(dy)) player.handleKey(dx < 0 ? 'right' : 'left'); else dispatch('back'); return; }
+  if (s0.x < 30 && dx > 70 && Math.abs(dy) < 80) return dispatch('back'); // swipe in from the left edge
+  const rem = ui.rem();
+  if (Math.abs(dx) > Math.abs(dy)) {
+    // along the row you swiped on (or the banner)
+    const group = s0.target.closest?.('.hero, [data-group="row"]');
+    if (group && !group.contains(nav.focused())) { const f = nearestIn(group, s0.x, s0.y); if (f) nav.focus(f); }
+    const n = Math.min(10, Math.max(1, Math.round(Math.abs(dx) / (15 * rem))));
+    for (let i = 0; i < n; i++) dispatch(dx < 0 ? 'right' : 'left');
+  } else {
+    const n = Math.min(6, Math.max(1, Math.round(Math.abs(dy) / (15 * rem))));
+    for (let i = 0; i < n; i++) dispatch(dy < 0 ? 'down' : 'up');
+  }
+}, { passive: true });
+if (touchy() && !window.LumenBox) { // (not on the iPhone app's TV screen — that one is driven by the remote)
+  document.body.classList.add('touch');
+  // on a phone held upright the TV interface is far too small: ask to turn it sideways (or go back to the phone look)
+  if (window.LUMEN_WEB && !window.LumenBox) {
+    const r = el(`<div id="rotate"><div>${icon('tv')}<h2>Turn your phone sideways</h2><p>The TV look is made for a wide screen.</p><button>Use the Phone Layout Instead</button></div></div>`);
+    r.querySelector('button').onclick = () => { try { localStorage.setItem('lumen.look', 'phone'); } catch {} location.href = '../?phone'; };
+    document.body.appendChild(r);
+  }
+  const b = onSelect(el(`<div class="round f glow" id="touchBack" role="button" aria-label="Back">${icon('back')}</div>`), () => dispatch('back'));
+  $('#sysleft').prepend(b);
+}
 
 // ======================================================================= server messages
 function onServer(m) {

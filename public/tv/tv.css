@@ -460,3 +460,15 @@ html.rm #intro .mark, html.rm #intro .shadow { transition-duration: 1ms; }
 /* trailers: keep YouTube's own hover controls out of the way (see player.js) */
 #player .yt-shield { position: absolute; inset: 0; z-index: 1; cursor: none; background: transparent; }
 #player .chrome, #player .flash, #player .spinner, #player .msg { z-index: 2; }
+
+/* ---- touch: Lumen on a phone or iPad */
+#touchBack { display: none; }
+body.touch #touchBack { display: grid; }
+#rotate { display: none; }
+@media (orientation: portrait) and (pointer: coarse) {
+  #rotate { display: grid; position: fixed; inset: 0; z-index: 9999; place-items: center; background: #000; color: var(--ink); text-align: center; font-size: 16px; padding: 30px; }
+  #rotate .ic { width: 64px; height: 64px; opacity: .7; animation: rot 2.4s ease-in-out infinite; }
+  #rotate h2 { font-size: 24px; margin: 18px 0 6px; } #rotate p { color: var(--ink-2); margin: 0 0 22px; }
+  #rotate button { font: inherit; font-weight: 700; padding: 13px 20px; border-radius: 14px; border: 0; background: rgba(255,255,255,.14); color: var(--ink); }
+}
+@keyframes rot { 0%, 30% { transform: rotate(0); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }

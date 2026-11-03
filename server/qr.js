@@ -36,7 +36,7 @@ function rsRemainder(data, div) {
 }
 
 function encode(text) {
-  const bytes = [...Buffer.from(text, 'utf8')];
+  const bytes = [...new TextEncoder().encode(text)]; // (works in Node and in the browser)
   let ver = 1;
   for (; ver <= 10; ver++) {
     const cc = ver < 10 ? 8 : 16;
