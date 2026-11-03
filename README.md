@@ -31,7 +31,9 @@ Lumen also runs on a phone by itself: no laptop, server or pairing. Your library
   landscape. **Back** returns to Lumen and saves your place for Continue Watching.
 - **iPhone, or any phone: Lumen Web.** Open **https://da1essi08sol-dot.github.io/lumen/** and add it to your home screen
   (Safari › Share › **Add to Home Screen**). **Watch** opens the film in the free **Brave** browser, which blocks ads by
-  itself. Apple doesn't allow apps from outside the App Store, so there's no iPhone version of Lumen Browser.
+  itself.
+- **iPhone: Lumen Browser for iPhone.** The same ad-free player as Android (also stops pop-ups and redirects), installed
+  without the App Store using AltStore and a Windows PC: see [ios/README.md](ios/README.md).
 
 Each phone needs its own free TMDB key; Lumen asks for it the first time and shows you how to get one.
 
