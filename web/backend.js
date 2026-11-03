@@ -9,7 +9,11 @@ export const ACCENT_LIST = Object.entries(ACCENTS);
 export const FONTS = ['classic', 'cinema', 'bold', 'signage', 'serif'];
 const blank = () => ({
   settings: { tmdbKey: '', region: 'GB', language: 'en-GB', userName: '', accent: 'white', font: 'classic', watchLinks: [],
-    services: { youtube: true, iplayer: true, itvx: true, channel4: true, my5: true, tubi: true, pluto: true } },
+    services: { youtube: true, iplayer: true, itvx: true, channel4: true, my5: true, tubi: true, pluto: true },
+    // the TV interface's own settings (Lumen on the TV through the iPhone app, or in a browser turned sideways)
+    deviceName: 'Lumen TV', sound: { on: true, style: 'soft', volume: 0.6 }, intro: { anim: true, sound: true }, showClock: true, reduceMotion: false,
+    background: { mode: 'artwork', image: null }, brightness: { level: 100, hw: false }, screensaver: true, homeBanner: { source: 'recommended', folderId: null },
+    autoPlay: true, blockPopups: true, shortcuts: [] },
   folders: [], recent: [], watching: [], filmSites: {},
 });
 let db;
@@ -18,6 +22,12 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(db)); } catc
 const S = () => db.settings;
 const tmdb = createTmdb(S);
 
+// Lumen Box: the iPhone app puts window.LumenBox in the TV page — the TV's Wi-Fi address, paired remotes, and a
+// way to send it messages (open a film on the TV, a pairing code for a new remote…)
+const box = () => (typeof window !== 'undefined' && window.LumenBox) || null;
+const toBox = (m) => { try { box()?.post?.(m); } catch {} };
+// messages for the TV page, the same ones Lumen on the laptop sends over its WebSocket
+export function notify(m) { try { window.dispatchEvent(new CustomEvent('lumen-server', { detail: m })); } catch {} }
 const err = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
 const cleanItem = (i) => ({ id: +i.id, type: i.type === 'tv' ? 'tv' : 'movie', title: String(i.title || '').slice(0, 200), year: Number.isInteger(+i.year) ? +i.year : null, poster_path: i.poster_path || null, backdrop_path: i.backdrop_path || null });
@@ -40,6 +50,7 @@ const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ''); 
 
 // progress reported by Lumen Browser (Android) while a film plays, for Continue Watching
 export function saveProgress({ id, type, title, year, poster_path, backdrop_path, t, d, linkId }) {
+  reload();
   if (!(d > 60) || !(t >= 0) || !id) return;
   const key = `${type}:${id}`, list = db.watching, i = list.findIndex((w) => w.key === key);
   if (i >= 0) list.splice(i, 1);
@@ -47,11 +58,17 @@ export function saveProgress({ id, type, title, year, poster_path, backdrop_path
   db.watching = list.slice(0, 30); save();
 }
 
+function reload() { try { const d = JSON.parse(localStorage.getItem(KEY) || 'null'); if (d) { db = { ...blank(), ...d }; db.settings = { ...blank().settings, ...(d.settings || {}) }; } } catch {} }
 export async function api(path, opts = {}) {
+  reload(); // the phone page and the TV page may both be open (Lumen Box): pick up what the other one saved
   const url = new URL(path, 'https://lumen.local'); const p = url.pathname, m = (opts.method || 'GET').toUpperCase(), b = opts.body || {};
   let mm;
   if (p === '/api/config') return { web: true, imageBase: 'https://image.tmdb.org/t/p', hasKey: !!S().tmdbKey, keyHint: S().tmdbKey ? '…' + S().tmdbKey.slice(-4) : '', region: S().region,
-    watchLinks: S().watchLinks, userName: S().userName, accent: S().accent, accentRgb: accentRgb(), font: S().font, services: S().services, serviceNames: Object.fromEntries(Object.entries(SERVICES).map(([k, v]) => [k, v.name])) };
+    watchLinks: S().watchLinks, userName: S().userName, accent: S().accent, accentRgb: accentRgb(), font: S().font, services: S().services, serviceNames: Object.fromEntries(Object.entries(SERVICES).map(([k, v]) => [k, v.name])),
+    // for the TV interface
+    box: !!box(), deviceName: S().deviceName, sound: S().sound, intro: S().intro, showClock: S().showClock, reduceMotion: S().reduceMotion, background: { ...S().background, mode: S().background.mode === 'custom' ? 'artwork' : S().background.mode },
+    brightness: S().brightness, screensaver: S().screensaver, homeBanner: S().homeBanner, homeBannerName: S().homeBanner?.source === 'folder' ? (db.folders.find((f) => f.id === S().homeBanner.folderId)?.name || null) : null,
+    autoPlay: S().autoPlay, blockPopups: S().blockPopups, shortcuts: S().shortcuts, lanHost: box()?.host || '', version: 'web', system: { web: true } };
   if (p === '/api/settings' && m === 'POST') {
     const s = S();
     if (typeof b.tmdbKey === 'string') {
@@ -69,7 +86,14 @@ export async function api(path, opts = {}) {
       s.watchLinks = out;
     }
     if (b.services && typeof b.services === 'object') for (const k of Object.keys(SERVICES)) if (typeof b.services[k] === 'boolean') s.services[k] = b.services[k];
-    save(); return { ok: true };
+    if (typeof b.deviceName === 'string' && b.deviceName.trim()) s.deviceName = b.deviceName.trim().slice(0, 40);
+    if (b.sound && typeof b.sound === 'object') { s.sound = { ...s.sound }; if (typeof b.sound.on === 'boolean') s.sound.on = b.sound.on; if (typeof b.sound.style === 'string') s.sound.style = b.sound.style.slice(0, 20); if (Number.isFinite(b.sound.volume)) s.sound.volume = Math.max(0, Math.min(1, b.sound.volume)); }
+    if (b.intro && typeof b.intro === 'object') { s.intro = { ...s.intro }; for (const k of ['anim', 'sound']) if (typeof b.intro[k] === 'boolean') s.intro[k] = b.intro[k]; }
+    for (const k of ['showClock', 'reduceMotion', 'screensaver', 'autoPlay', 'blockPopups']) if (typeof b[k] === 'boolean') s[k] = b[k];
+    if (b.background && ['artwork', 'black', 'graphite'].includes(b.background.mode)) s.background = { mode: b.background.mode, image: null };
+    if (b.brightness && Number.isFinite(b.brightness.level)) { s.brightness = { ...s.brightness, level: Math.max(1, Math.min(100, Math.round(b.brightness.level))) }; notify({ t: 'brightness', level: s.brightness.level }); }
+    if (b.homeBanner && typeof b.homeBanner === 'object') { const src = b.homeBanner.source === 'folder' && db.folders.some((f) => f.id === b.homeBanner.folderId) ? 'folder' : 'recommended'; s.homeBanner = { source: src, folderId: src === 'folder' ? b.homeBanner.folderId : null }; }
+    save(); notify({ t: 'settings-changed' }); return { ok: true };
   }
   if ((mm = p.match(/^\/api\/section\/(home|movies|tv|free|recent)$/))) {
     const ctx = mm[1] === 'home' ? { recent: db.recent.slice(0, 20), because: db.recent[0] || null } : mm[1] === 'recent' ? { folderAdds: db.folders.flatMap((f) => f.items).filter((i) => i.poster_path).sort((a, c) => c.addedAt - a.addedAt).slice(0, 20), media: [] } : {};
@@ -148,5 +172,57 @@ export async function api(path, opts = {}) {
   if (p === '/api/film-site') return { linkId: db.filmSites[`${url.searchParams.get('type')}:${url.searchParams.get('id')}`] || null };
   if (p === '/api/watch-saved') return { saved: [] };
   if (p === '/api/export') return JSON.parse(JSON.stringify({ ...db, settings: { ...db.settings, tmdbKey: '' } }));
+  // ---------------- the TV interface (Lumen Box) ----------------
+  if (p === '/api/recent' && m === 'GET') return { items: db.recent };
+  if (p === '/api/recent' && m === 'POST') { const it = cleanItem(b.item || {}); if (it.id) { db.recent = [{ ...it, viewedAt: Date.now() }, ...db.recent.filter((x) => !(x.id === it.id && x.type === it.type))].slice(0, 40); save(); } return { ok: true }; }
+  if (p === '/api/recent' && m === 'DELETE') { db.recent = []; save(); return { ok: true }; }
+  if (p === '/api/progress') return m === 'GET' ? null : { ok: true };
+  if (p.startsWith('/api/media/')) return { roots: [], pinned: [], vlc: false, items: [], files: [], folders: [] };   // no files on a phone
+  if (p === '/api/backgrounds' && m === 'GET') return { backgrounds: [], current: S().background };
+  if (p === '/api/shortcuts' && m === 'POST') {
+    let u = String(b.url || '').trim(); if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+    try { new URL(u); } catch { throw err('That isn’t a web address.'); }
+    const sc = { id: uid().slice(0, 12), name: String(b.name || hostOf(u)).trim().slice(0, 30), url: u.slice(0, 500) };
+    S().shortcuts = [...(S().shortcuts || []), sc].slice(0, 24); save(); return sc;
+  }
+  if ((mm = p.match(/^\/api\/shortcuts\/([\w-]+)$/)) && m === 'DELETE') { S().shortcuts = (S().shortcuts || []).filter((x) => x.id !== mm[1]); save(); return { ok: true }; }
+  // opening a website: on the TV through the iPhone app's own player (ads blocked), otherwise a new tab
+  if (p === '/api/open' && m === 'POST') {
+    let target = null, label = '', item = null;
+    if (b.watchLink) {
+      const links = S().watchLinks, w = links.find((x) => x.id === b.linkId) || links[0];
+      if (!w) throw err('Add a Watch website in Settings first.');
+      target = buildWatchUrl(w.pattern, String(b.title || ''), Number.isInteger(b.year) ? b.year : null); label = String(b.title || '');
+      item = b.item ? { ...cleanItem({ ...b.item, title: b.title, year: b.year }), linkId: w.id } : null;
+      if (item) { db.filmSites[`${item.type}:${item.id}`] = w.id; save(); }
+      const prev = item && db.watching.find((x) => x.key === `${item.type}:${item.id}`); if (prev && item) item.resumeAt = prev.t;
+    } else if (b.service && SERVICES[b.service]) { target = b.query && SERVICES[b.service].url ? SERVICES[b.service].url(b.query) : SERVICES[b.service].home; label = SERVICES[b.service].name; }
+    else if (b.shortcut) { const sc = (S().shortcuts || []).find((x) => x.id === b.shortcut); if (sc) { target = sc.url; label = sc.name; } }
+    else if (b.youtubeVideo && /^[\w-]{6,20}$/.test(b.youtubeVideo)) { target = `https://www.youtube.com/watch?v=${b.youtubeVideo}`; label = 'YouTube'; }
+    if (!target) throw err('Unknown destination');
+    if (window.LumenNative?.watch) { window.LumenNative.watch(target, JSON.stringify(item || { title: label })); return { ok: true }; }
+    window.open(target, '_blank', 'noopener'); setTimeout(() => notify({ t: 'external', external: null }), 400);
+    return { ok: true };
+  }
+  if (p === '/api/close-external' && m === 'POST') { toBox({ t: 'close-player' }); notify({ t: 'external', external: null }); return { ok: true }; }
+  // remotes: a second phone on the same Wi-Fi, through the iPhone app (Lumen Box)
+  if (p === '/api/pair/start' && m === 'POST') {
+    if (!box()) throw err('A phone remote needs Lumen Browser for iPhone with the TV connected (or Lumen on a laptop).');
+    const code = String(Math.floor(Math.random() * 1e6)).padStart(6, '0'), host = box().host || '', url = `http://${host}/remote/?code=${code}`;
+    toBox({ t: 'pairing', code, expires: Date.now() + 5 * 60e3 });
+    let qr = ''; try { qr = (await import('./qr.js')).toSvg(url, { dark: '#000', light: '#fff' }); } catch {}
+    return { code, url, host, expires: Date.now() + 5 * 60e3, qr, addresses: [] };
+  }
+  if (p === '/api/devices' && m === 'GET') return { devices: box()?.devices || [] };
+  if ((mm = p.match(/^\/api\/devices\/([\w-]+)$/)) && m === 'DELETE') { toBox({ t: 'unpair', id: mm[1] }); return { ok: true }; }
+  // sleep timer, kept on this device
+  if (p === '/api/sleep') {
+    if (m === 'POST') { clearTimeout(sleepT); sleepAt = 0; const n = +b.minutes; if (n > 0) { sleepAt = Date.now() + n * 60e3; sleepT = setTimeout(() => { sleepAt = 0; toBox({ t: 'close-player' }); notify({ t: 'sleep-now' }); }, n * 60e3); } notify({ t: 'sleep', sleep: sleepInfo() }); }
+    return { sleep: sleepInfo() };
+  }
+  if (p === '/api/update/check') return { supported: false, web: true };
+  if (p === '/api/app' || p === '/api/quit') return { ok: true };
   throw err('That needs Lumen on a computer', 404);
 }
+let sleepT = null, sleepAt = 0;
+const sleepInfo = () => (sleepAt ? { at: sleepAt, left: Math.max(0, Math.round((sleepAt - Date.now()) / 1000)) } : null);

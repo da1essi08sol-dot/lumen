@@ -34,6 +34,9 @@ Lumen also runs on a phone by itself: no laptop, server or pairing. Your library
   itself.
 - **iPhone: Lumen Browser for iPhone.** The same ad-free player as Android (also stops pop-ups and redirects), installed
   without the App Store using AltStore and a Windows PC: see [ios/README.md](ios/README.md).
+  - **On your TV with no laptop (Lumen Box):** Screen Mirroring to an Apple TV (or a Lightning-to-HDMI adapter) turns the
+    TV into the full Lumen TV interface, films play on the TV, and another phone on the same Wi-Fi pairs as the remote.
+- **The TV look on a phone:** Settings › **TV look**, then turn the phone sideways: the full TV interface with touch.
 
 Each phone needs its own free TMDB key; Lumen asks for it the first time and shows you how to get one.
 

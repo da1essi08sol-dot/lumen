@@ -15,6 +15,13 @@ targets:
         buildPhase: resources
       - path: ../android/app/src/main/assets/blocklist.txt
         buildPhase: resources
+      # the Lumen Remote's pages, served to another phone on the Wi-Fi (Lumen Box, see LanServer.swift)
+      - path: ../public/remote
+        type: folder
+        buildPhase: resources
+      - path: ../public/shared
+        type: folder
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: tv.lumen.browser

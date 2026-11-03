@@ -7,7 +7,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return true
     }
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
-        UISceneConfiguration(name: "Default", sessionRole: connectingSceneSession.role)
+        // a TV (AirPlay Screen Mirroring or a cable): Lumen's TV interface goes there (Lumen Box, see TVScene.swift)
+        if Self.isTV(connectingSceneSession.role) {
+            let c = UISceneConfiguration(name: "TV", sessionRole: connectingSceneSession.role)
+            c.delegateClass = TVSceneDelegate.self
+            return c
+        }
+        return UISceneConfiguration(name: "Default", sessionRole: connectingSceneSession.role)
+    }
+    static func isTV(_ role: UISceneSession.Role) -> Bool {
+        if #available(iOS 16.0, *) { return role == .windowExternalDisplayNonInteractive || role.rawValue == "UIWindowSceneSessionRoleExternalDisplay" }
+        return role.rawValue == "UIWindowSceneSessionRoleExternalDisplay"
     }
 }
 

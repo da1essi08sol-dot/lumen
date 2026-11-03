@@ -15,6 +15,8 @@ class PlayerViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
     private var hideTimer: Timer?
     private var blockedCount = 0
     var onClose: ((Double, Double) -> Void)?
+    /// shown on the TV (Lumen Box): no close button on screen; the remote controls it
+    var onTV = false
 
     init(url: URL, item: [String: Any]) { self.url = url; self.item = item; super.init(nibName: nil, bundle: nil) }
     required init?(coder: NSCoder) { fatalError() }
@@ -88,6 +90,7 @@ class PlayerViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
             Blocker.shared.whenReady { [weak self] lists in guard let self = self else { return }; lists.forEach { self.web.configuration.userContentController.add($0) }; self.web.load(URLRequest(url: self.url)) }
         } else { web.load(URLRequest(url: url)) }
         showControls()
+        if onTV { closeButton.isHidden = true }
     }
 
     @objc private func showControls() {
@@ -98,6 +101,11 @@ class PlayerViewController: UIViewController, WKNavigationDelegate, WKUIDelegate
         }
     }
     @objc private func edgeSwipe(_ g: UIScreenEdgePanGestureRecognizer) { if g.state == .ended { close() } }
+
+    // ---- the remote's buttons (when the film is on the TV); inject.js passes them on to embedded players
+    func togglePlay() { web.evaluateJavaScript("window.__lumenCmd && __lumenCmd('toggle')", completionHandler: nil) }
+    func seek(by s: Double) { web.evaluateJavaScript("window.__lumenCmd && __lumenCmd('seek', \(s))", completionHandler: nil) }
+    func closeFromRemote() { close() }
     @objc private func close() {
         hideTimer?.invalidate()
         web.evaluateJavaScript("document.querySelectorAll('video').forEach(function(v){v.pause()})")

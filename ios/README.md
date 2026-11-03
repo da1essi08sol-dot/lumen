@@ -46,9 +46,32 @@ settings.
 
 If AltStore says the app has expired, open AltStore with the PC on and AltServer running, and tap **Refresh All**.
 
+## Lumen on your TV, with another phone as the remote (Lumen Box)
+
+Your iPhone can be the box behind the TV: the TV shows Lumen's full TV interface (the same one as on the laptop), films
+play on the TV in this ad-free player, and another phone on the same Wi-Fi is the remote.
+
+1. Put the iPhone and the Apple TV (or any AirPlay TV) on the same Wi-Fi.
+2. Open **Lumen** on the iPhone, then open **Control Centre › Screen Mirroring** and choose the Apple TV.
+   The TV switches to Lumen's TV interface by itself (the iPhone keeps its own screen), and the iPhone shows
+   **Lumen is on your TV · Remote**. A Lightning-to-HDMI adapter works the same way.
+3. **The other phone:** on the TV, open **Remote** (top right). Point the other phone's camera at the code (or open
+   the address shown, e.g. `http://192.168.0.23:8787/remote/`, in Safari) and enter the 6-digit code. It gets the Lumen
+   Remote: d-pad, Back, Home, Play/Pause, typing and brightness. The first time, the iPhone asks whether Lumen may find
+   devices on your local network: choose **Allow**.
+4. **While a film plays on the TV:** OK or Play/Pause pauses it, left/right skips 10 seconds (up/down a minute), and
+   Back or Home stops it and saves your place for Continue Watching.
+
+Keep Lumen open on the iPhone while it's on the TV (you can lock it once the film is playing only if Screen Mirroring
+stays on). Volume is the Apple TV's (or the TV's) own remote, or the iPhone's volume buttons.
+
+**The TV look on the phone itself:** in Lumen's Settings, **TV look › Use the TV Look**, then turn the phone sideways.
+Tap to select, swipe to move through rows, and swipe in from the left edge (or tap ‹) to go back. Settings › **Use the
+Phone Layout** switches back.
+
 ## How it's built
 
-`project.yml` (XcodeGen), Swift and WKWebView, iOS 15 or later. `.github/workflows/ios.yml` builds an unsigned
+`project.yml` (XcodeGen), Swift and WKWebView, iOS 15 or later. Lumen Box: `TVScene.swift` (the TV as a screen of its own), `Box.swift` (pairing, remotes, what's on screen) and `LanServer.swift` (the remote's web page on port 8787 and its live link on 8788, home Wi-Fi only). `.github/workflows/ios.yml` builds an unsigned
 `Lumen-Browser.ipa` on GitHub's macOS runners and publishes it to the `ios-latest` release; AltStore signs it at install.
 The home screen is Lumen Web (da1essi08sol-dot.github.io/lumen), so Lumen itself updates without reinstalling.
 The player script (`inject.js`) and the blocklist are shared with the Android app.

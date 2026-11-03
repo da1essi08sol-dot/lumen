@@ -41,6 +41,18 @@
       }
     }
   }
+  // the remote's play/pause and skip buttons (Lumen Box: the film is on the TV): reach the film's video in
+  // whichever frame it plays in, and pass the command on to embedded players
+  function film() {
+    var vs = Array.prototype.slice.call(document.querySelectorAll('video')).filter(function (v) { return (v.duration || 0) > 60; });
+    vs.sort(function (a, b) { return b.duration - a.duration; }); return vs[0];
+  }
+  window.__lumenCmd = function (c, by) {
+    var v = film();
+    if (v) { if (c === 'toggle') { if (v.paused) v.play(); else v.pause(); } else if (c === 'seek') { v.currentTime = Math.max(0, Math.min(v.duration - 1, v.currentTime + (+by || 0))); } }
+    try { Array.prototype.forEach.call(document.querySelectorAll('iframe'), function (f) { f.contentWindow.postMessage({ lumenCmd: c, by: +by || 0 }, '*'); }); } catch (e) {}
+  };
+  window.addEventListener('message', function (e) { var d = e.data; if (d && (d.lumenCmd === 'toggle' || d.lumenCmd === 'seek')) window.__lumenCmd(d.lumenCmd, d.by); });
   setInterval(tick, 1000);
   document.addEventListener('DOMContentLoaded', tick);
 })();

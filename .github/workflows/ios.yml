@@ -3,8 +3,8 @@
 name: iPhone
 on:
   push:
-    branches: [main]
-    paths: ['ios/**', 'android/app/src/main/assets/inject.js', '.github/workflows/ios.yml']
+    branches: [main, 'box-*']
+    paths: ['ios/**', 'android/app/src/main/assets/inject.js', 'public/remote/**', 'public/shared/**', '.github/workflows/ios.yml']
   workflow_dispatch:
 permissions:
   contents: write
@@ -34,7 +34,15 @@ jobs:
         run: |
           mkdir Payload && cp -R ios/build/Build/Products/Release-iphoneos/Lumen.app Payload/
           zip -qry Lumen-Browser.ipa Payload && ls -l Lumen-Browser.ipa
+      # test builds from other branches: kept as a download on the run, never published
+      - name: Keep the test build
+        if: github.ref != 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lumen-Browser-test
+          path: Lumen-Browser.ipa
       - name: Publish
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ios-latest

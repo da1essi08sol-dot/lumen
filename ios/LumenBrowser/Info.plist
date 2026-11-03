@@ -31,6 +31,8 @@
 	</array>
 	<key>CFBundleURLTypes</key>
 	<array><dict><key>CFBundleURLSchemes</key><array><string>lumenbrowser</string></array></dict></array>
+	<key>NSLocalNetworkUsageDescription</key><string>Lumen lets another phone on your Wi-Fi be the remote for Lumen on your TV.</string>
+	<key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key><false/>
@@ -40,6 +42,16 @@
 			<array><dict>
 				<key>UISceneConfigurationName</key><string>Default</string>
 				<key>UISceneDelegateClassName</key><string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+			</dict></array>
+			<key>UIWindowSceneSessionRoleExternalDisplayNonInteractive</key>
+			<array><dict>
+				<key>UISceneConfigurationName</key><string>TV</string>
+				<key>UISceneDelegateClassName</key><string>$(PRODUCT_MODULE_NAME).TVSceneDelegate</string>
+			</dict></array>
+			<key>UIWindowSceneSessionRoleExternalDisplay</key>
+			<array><dict>
+				<key>UISceneConfigurationName</key><string>TV</string>
+				<key>UISceneDelegateClassName</key><string>$(PRODUCT_MODULE_NAME).TVSceneDelegate</string>
 			</dict></array>
 		</dict>
 	</dict>
