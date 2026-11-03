@@ -1064,7 +1064,7 @@ if (!onPhone())     item('Add an Ad-blocker Extension', icon('plus'), async () =
       const ok = await ui.confirmDialog({ title: `Unpair ${d.name}?`, text: 'It will need to scan the code again to control this TV.', ok: 'Unpair', danger: true });
       if (ok) await api(`/api/devices/${d.id}`, { method: 'DELETE' });
     });
-    item('Pair a Remote', icon('remote'), openPairing, onPhone() ? (cfg.box ? `Another phone on this Wi-Fi: ${cfg.lanHost}` : 'Open Lumen in the iPhone app with the TV connected to pair a remote') : `Phone address: ${cfg.lanHost}:${cfg.port}`);
+    item('Pair a Remote', icon('remote'), openPairing, onPhone() ? (cfg.webRemote ? 'Scan a code with another phone, on any Wi-Fi or mobile data' : cfg.box ? `Another phone on this Wi-Fi: ${cfg.lanHost}` : 'The remote is getting ready') : `Phone address: ${cfg.lanHost}:${cfg.port}`);
 
     if (!onPhone()) {
     sec('Video Folders');
@@ -1139,9 +1139,9 @@ async function openPairing() {
   if (pairModal) return;
   let p;
   try { p = await api('/api/pair/start', { method: 'POST' }); } catch (e) { return ui.toast(e.message, 'info'); }
-  pairModal = ui.modal(`<h2>Use Your iPhone as a Remote</h2><p>Your phone and ${onPhone() ? 'the iPhone that’s showing Lumen' : 'this laptop'} need to be on the same Wi-Fi.</p>
+  pairModal = ui.modal(`<h2>Use Your iPhone as a Remote</h2><p>${p.host ? `Your phone and ${onPhone() ? 'the iPhone that’s showing Lumen' : 'this laptop'} need to be on the same Wi-Fi.` : 'Use another phone, on any Wi-Fi or mobile data. Keep this screen on while you use it.'}</p>
     <div class="pair"><div class="qr">${p.qr}</div><div><ol><li>Open the <b>Camera</b> on your iPhone</li><li>Point it at this code and tap the link</li><li>Tap <b>Pair</b> — then <b>Start Remote</b></li></ol>
-    <div class="code">${p.code}</div><div class="addr">Or open ${esc(p.host)}/remote in Safari and enter this code · expires in 5 minutes</div></div></div>
+    <div class="code">${p.code}</div><div class="addr">${p.host ? `Or open ${esc(p.host)}/remote in Safari and enter this code · ` : ''}expires in 5 minutes</div></div></div>
     <div class="actions" data-group="row"></div>`, { wide: true, onClose: () => { pairModal = null; clearTimeout(exp); } });
   pairModal.querySelector('.actions').appendChild(onSelect(el(`<div class="btn f glow">Done</div>`), () => pairModal.close()));
   const exp = setTimeout(() => { if (pairModal) { pairModal.close(); openPairing(); } }, p.expires - Date.now() - 1000);

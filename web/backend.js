@@ -27,6 +27,8 @@ const tmdb = createTmdb(S);
 const box = () => (typeof window !== 'undefined' && window.LumenBox) || null;
 const toBox = (m) => { try { box()?.post?.(m); } catch {} };
 // messages for the TV page, the same ones Lumen on the laptop sends over its WebSocket
+// what a phone remote shows about this TV (its name, colour, fonts and brightness)
+export function remoteLook() { reload(); return { deviceName: S().deviceName, accent: accentRgb(), font: S().font || 'classic', brightness: S().brightness?.level ?? 100 }; }
 export function notify(m) { try { window.dispatchEvent(new CustomEvent('lumen-server', { detail: m })); } catch {} }
 const err = (msg, status = 400) => Object.assign(new Error(msg), { status });
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
@@ -66,7 +68,7 @@ export async function api(path, opts = {}) {
   if (p === '/api/config') return { web: true, imageBase: 'https://image.tmdb.org/t/p', hasKey: !!S().tmdbKey, keyHint: S().tmdbKey ? '…' + S().tmdbKey.slice(-4) : '', region: S().region,
     watchLinks: S().watchLinks, userName: S().userName, accent: S().accent, accentRgb: accentRgb(), font: S().font, services: S().services, serviceNames: Object.fromEntries(Object.entries(SERVICES).map(([k, v]) => [k, v.name])),
     // for the TV interface
-    box: !!box(), deviceName: S().deviceName, sound: S().sound, intro: S().intro, showClock: S().showClock, reduceMotion: S().reduceMotion, background: { ...S().background, mode: S().background.mode === 'custom' ? 'artwork' : S().background.mode },
+    box: !!box(), webRemote: !!box()?.web, deviceName: S().deviceName, sound: S().sound, intro: S().intro, showClock: S().showClock, reduceMotion: S().reduceMotion, background: { ...S().background, mode: S().background.mode === 'custom' ? 'artwork' : S().background.mode },
     brightness: S().brightness, screensaver: S().screensaver, homeBanner: S().homeBanner, homeBannerName: S().homeBanner?.source === 'folder' ? (db.folders.find((f) => f.id === S().homeBanner.folderId)?.name || null) : null,
     autoPlay: S().autoPlay, blockPopups: S().blockPopups, shortcuts: S().shortcuts, lanHost: box()?.host || '', version: 'web', system: { web: true } };
   if (p === '/api/settings' && m === 'POST') {
@@ -207,8 +209,9 @@ export async function api(path, opts = {}) {
   if (p === '/api/close-external' && m === 'POST') { toBox({ t: 'close-player' }); notify({ t: 'external', external: null }); return { ok: true }; }
   // remotes: a second phone on the same Wi-Fi, through the iPhone app (Lumen Box)
   if (p === '/api/pair/start' && m === 'POST') {
-    if (!box()) throw err('A phone remote needs Lumen Browser for iPhone with the TV connected (or Lumen on a laptop).');
-    const code = String(Math.floor(Math.random() * 1e6)).padStart(6, '0'), host = box().host || '', url = `http://${host}/remote/?code=${code}`;
+    if (!box()) throw err('The remote is still getting ready. Try again in a moment.');
+    const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1e6).padStart(6, '0'), host = box().host || '';
+    const url = box().remoteUrl ? box().remoteUrl(code) : `http://${host}/remote/?code=${code}`; // Lumen Web: a remote over the internet
     toBox({ t: 'pairing', code, expires: Date.now() + 5 * 60e3 });
     let qr = ''; try { qr = (await import('./qr.js')).toSvg(url, { dark: '#000', light: '#fff' }); } catch {}
     return { code, url, host, expires: Date.now() + 5 * 60e3, qr, addresses: [] };

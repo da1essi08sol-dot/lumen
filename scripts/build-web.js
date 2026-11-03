@@ -37,7 +37,21 @@ for (const f of ['loading.js', 'logo.svg', 'theme-tv.css']) {
 fs.writeFileSync(path.join(OUT, 'tv', 'index.html'), fs.readFileSync(path.join(ROOT, 'public/tv/index.html'), 'utf8')
   .replace(/href="\/shared\//g, 'href="../shared/')
   .replace('<meta name="viewport" content="width=device-width, initial-scale=1">', '<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">\n<meta name="apple-mobile-web-app-capable" content="yes">\n<meta name="theme-color" content="#000000">\n<link rel="manifest" href="../manifest.webmanifest">\n<link rel="apple-touch-icon" href="../icon-180.png">')
-  .replace('<script type="module" src="app.js"></script>', '<script type="module">\n  import * as backend from \'../backend.js\';\n  window.LUMEN_WEB = backend;\n  await import(\'./app.js\');\n</script>'));
+  .replace('<script type="module" src="app.js"></script>', '<script type="module">\n  import * as backend from \'../backend.js\';\n  window.LUMEN_WEB = backend;\n  try { (await import(\'../relay.js\')).startRelay(backend); } catch (e) { console.warn(e); }\n  await import(\'./app.js\');\n</script>'));
+// phone remotes over the internet (no laptop, no app): relay.js on the TV page, remote/ on the other phone
+for (const f of ['relay.js', 'remote-link.js']) cp(`web/${f}`, f);
+fs.mkdirSync(path.join(OUT, 'vendor'), { recursive: true });
+for (const f of fs.readdirSync(path.join(ROOT, 'web/vendor'))) cp(`web/vendor/${f}`, `vendor/${f}`);
+fs.mkdirSync(path.join(OUT, 'remote'), { recursive: true });
+const rmRel = (s) => s.replace(/(['"`(])\/shared\//g, '$1../shared/');
+cp('public/remote/remote.css', 'remote/remote.css');
+fs.writeFileSync(path.join(OUT, 'remote', 'remote.js'), rmRel(fs.readFileSync(path.join(ROOT, 'public/remote/remote.js'), 'utf8'))
+  .replace('new WebSocket(', 'new window.LumenLinkSocket(')
+  .replace("history.replaceState(null, '', '/remote/')", 'history.replaceState(null, \'\', location.pathname)')
+  .replace('Enter the 6-digit code shown on your TV. Your iPhone and the TV laptop must be on the same Wi-Fi.', 'Enter the 6-digit code shown on your TV, or scan its code with this phone’s Camera.'));
+fs.writeFileSync(path.join(OUT, 'remote', 'index.html'), rmRel(fs.readFileSync(path.join(ROOT, 'public/remote/index.html'), 'utf8')).replace(/href="\/shared\//g, 'href="../shared/')
+  .replace('<script type="module" src="remote.js"></script>', '<style>.tabbar button[data-t=browse], .tabbar button[data-t=trackpad], .tabbar button[data-t=backgrounds], .volbar:not(.brightbar) { display: none; }</style>\n<script src="../vendor/peerjs.min.js"></script>\n<script src="../remote-link.js"></script>\n<script type="module" src="remote.js"></script>'));
+for (const f of ['icon-180.png']) if (fs.existsSync(path.join(OUT, f))) fs.copyFileSync(path.join(OUT, f), path.join(OUT, 'shared', f));
 // the QR code maker, for pairing a remote with the iPhone app
 fs.writeFileSync(path.join(OUT, 'qr.js'), `// generated from server/qr.js by scripts/build-web.js\nconst module = { exports: {} };\n${fs.readFileSync(path.join(ROOT, 'server/qr.js'), 'utf8').replace(/^'use strict';/m, '')}\nexport { encode, toSvg };\n`);
 fs.writeFileSync(path.join(OUT, '.nojekyll'), '');
