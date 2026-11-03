@@ -1,0 +1,30 @@
+# Lumen Browser for iPhone. Built by .github/workflows/ios.yml (XcodeGen makes the Xcode project from this file).
+name: LumenBrowser
+options:
+  bundleIdPrefix: tv.lumen
+  deploymentTarget:
+    iOS: "15.0"
+targets:
+  LumenBrowser:
+    type: application
+    platform: iOS
+    sources:
+      - path: LumenBrowser
+      # shared with the Android app: the player script and the ad and tracker blocklist
+      - path: ../android/app/src/main/assets/inject.js
+        buildPhase: resources
+      - path: ../android/app/src/main/assets/blocklist.txt
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: tv.lumen.browser
+        PRODUCT_NAME: Lumen
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_FILE: LumenBrowser/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        CODE_SIGNING_ALLOWED: "NO"
+        CODE_SIGNING_REQUIRED: "NO"
+        CODE_SIGN_IDENTITY: ""

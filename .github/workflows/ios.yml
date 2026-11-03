@@ -1,0 +1,48 @@
+# Builds Lumen Browser for iPhone (Lumen-Browser.ipa, unsigned) and publishes it on the "ios-latest" release.
+# Install it with AltStore or SideStore, which sign it with your own free Apple ID (see ios/README.md).
+name: iPhone
+on:
+  push:
+    branches: [main]
+    paths: ['ios/**', 'android/app/src/main/assets/inject.js', '.github/workflows/ios.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  ipa:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ad and tracker blocklist (StevenBlack hosts)
+        run: |
+          if curl -fsSL https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts -o hosts; then
+            { echo "# StevenBlack hosts list"; grep -E '^0\.0\.0\.0 ' hosts | awk '{print $2}' | grep -v '^0\.0\.0\.0$'; } > android/app/src/main/assets/blocklist.txt
+          fi
+          wc -l android/app/src/main/assets/blocklist.txt
+      - name: Make the Xcode project
+        run: brew install xcodegen && cd ios && xcodegen generate
+      - name: Build
+        run: |
+          cd ios
+          xcodebuild -project LumenBrowser.xcodeproj -scheme LumenBrowser -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} build > build.log 2>&1 || { grep -E 'error:|warning: .*deprecated' -A3 build.log | head -80; tail -30 build.log; exit 1; }
+          grep -c 'warning:' build.log || true
+          test -d build/Build/Products/Release-iphoneos/Lumen.app
+      - name: Package
+        run: |
+          mkdir Payload && cp -R ios/build/Build/Products/Release-iphoneos/Lumen.app Payload/
+          zip -qry Lumen-Browser.ipa Payload && ls -l Lumen-Browser.ipa
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-latest
+          name: Lumen Browser for iPhone
+          make_latest: 'false'
+          files: Lumen-Browser.ipa
+          body: |
+            **Lumen Browser for iPhone**: Lumen with its own browser that blocks ads, trackers, pop-ups and redirects, and plays films full screen.
+
+            It isn't on the App Store, so you install it with **AltStore** using your own free Apple ID.
+            Step-by-step guide: https://github.com/da1essi08sol-dot/lumen/blob/main/ios/README.md

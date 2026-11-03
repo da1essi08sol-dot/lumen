@@ -9,3 +9,5 @@ android/app/build/
 android/app/src/main/assets/web/
 android/local.properties
 *.keystore
+ios/build/
+ios/*.xcodeproj/
