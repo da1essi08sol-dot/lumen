@@ -246,7 +246,7 @@ function openDetail(item) {
 // Inside Lumen Browser (Android): its own browser blocks ads and pop-ups, presses play and fills the screen.
 // On an iPhone: the Brave app (its Shields block ads). Anywhere else: a new tab.
 const watchHint = () => (NATIVE ? 'Ad-free, full screen' : IOS ? 'Opens in Brave, which blocks ads' : ANDROID ? 'Opens in Lumen Browser' : 'Opens in a new tab');
-const watchNote = () => (NATIVE ? 'Lumen Browser blocks ads and pop-ups, starts the film and fills the screen. Press Back to come back to Lumen.'
+const watchNote = () => (NATIVE ? 'Lumen Browser blocks ads and pop-ups, starts the film and fills the screen. ' + (IOS ? 'Tap the screen and press ✕ to come back to Lumen.' : 'Press Back to come back to Lumen.')
   : IOS ? 'Watch opens the film in Brave, a free browser whose Shields block ads and pop-ups. Tap the video’s full-screen button there.'
   : ANDROID ? 'Watch opens the film in Lumen Browser, which blocks ads and pop-ups and goes full screen by itself. It’s free: Settings › Get Lumen Browser.'
   : 'Watch opens the film in a new tab.');
@@ -597,7 +597,7 @@ function settingsView(v) {
   box.appendChild(wsec);
   // how films open on this phone
   const get = el(`<section class="ws-card"><h3>Ad-free watching</h3>${NATIVE ? '<p>You’re in Lumen Browser: it blocks ads, trackers and pop-ups, starts the film and fills the screen by itself.</p>'
-    : IOS ? '<p>On iPhone, Watch opens films in <b>Brave</b>, a free browser that blocks ads and pop-ups. Tap the video’s full-screen button there.</p><a class="btn" href="https://apps.apple.com/app/brave-private-web-browser/id1052879175" target="_blank" rel="noopener">Get Brave (free)</a>'
+    : IOS ? '<p>On iPhone, Watch opens films in <b>Brave</b>, a free browser that blocks ads and pop-ups. Tap the video’s full-screen button there.</p><a class="btn" href="https://apps.apple.com/app/brave-private-web-browser/id1052879175" target="_blank" rel="noopener">Get Brave (free)</a><p style="margin-top:14px">Or get <b>Lumen Browser for iPhone</b>, which also stops pop-ups and redirects. It isn’t on the App Store, so it’s installed with AltStore and a Windows PC.</p><a class="btn" href="https://github.com/da1essi08sol-dot/lumen/blob/main/ios/README.md" target="_blank" rel="noopener">How to Install Lumen Browser</a>'
     : ANDROID ? `<p>Get <b>Lumen Browser</b>, the free Android app: it blocks ads and pop-ups, starts the film and goes full screen by itself.</p><a class="btn primary" href="${APK_URL}" target="_blank" rel="noopener">${icon('download') || ''}Get Lumen Browser</a>`
     : '<p>On a computer, install <b>Lumen</b> for Windows for the full TV experience.</p><a class="btn" href="https://github.com/da1essi08sol-dot/lumen/releases/latest" target="_blank" rel="noopener">Get Lumen for Windows</a>'}</section>`);
   box.appendChild(get);
