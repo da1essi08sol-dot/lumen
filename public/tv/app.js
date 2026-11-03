@@ -580,11 +580,14 @@ function welcome() {
     <div class="steps">
       <div class="step"><i>1</i><b>Make a free account</b><span>On any device, go to <code>themoviedb.org/signup</code> and verify your email.</span></div>
       <div class="step"><i>2</i><b>Request an API key</b><span>Open <code>themoviedb.org/settings/api</code>, choose <code>Create → Developer</code>, describe it as a personal TV interface.</span></div>
-      <div class="step"><i>3</i><b>Paste it here</b><span>On this laptop open <code>localhost:${cfg.port || 8787}/setup</code>, or on your iPhone remote use the <code>Setup</code> tab.</span></div>
+      <div class="step"><i>3</i><b>Paste it here</b><span>${onPhone() ? 'Press <code>Add My Key</code> below: Lumen’s phone Settings opens, where you can paste it. The TV look then uses it too.' : `On this laptop open <code>localhost:${cfg.port || 8787}/setup</code>, or on your iPhone remote use the <code>Setup</code> tab.`}</span></div>
     </div><div class="actions" data-group="row"></div></div>`);
   const a = w.querySelector('.actions');
-  a.appendChild(onSelect(el(`<div class="btn primary f glow autofocus">${icon('remote')}Pair iPhone Remote</div>`), openPairing));
-  a.appendChild(onSelect(el(`<div class="btn f glow">${icon('keyboard')}Type Key with Remote</div>`), enterKeyDialog));
+  if (onPhone()) a.appendChild(onSelect(el(`<div class="btn primary f glow autofocus">${icon('keyboard')}Add My Key</div>`), () => { location.href = '../?phone'; }));
+  else {
+    a.appendChild(onSelect(el(`<div class="btn primary f glow autofocus">${icon('remote')}Pair iPhone Remote</div>`), openPairing));
+    a.appendChild(onSelect(el(`<div class="btn f glow">${icon('keyboard')}Type Key with Remote</div>`), enterKeyDialog));
+  }
   a.appendChild(onSelect(el(`<div class="btn f glow">${icon('folder')}My Library</div>`), () => switchTab('library', { focusContent: true })));
   return w;
 }
