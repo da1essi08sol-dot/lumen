@@ -3,7 +3,7 @@ name: Lumen Web
 on:
   push:
     branches: [main]
-    paths: ['web/**', 'public/phone/**', 'public/tv/**', 'public/shared/**', 'server/tmdb.js', 'server/qr.js', 'scripts/build-web.js', '.github/workflows/pages.yml']
+    paths: ['web/**', 'public/phone/**', 'public/tv/**', 'public/remote/**', 'public/shared/**', 'server/tmdb.js', 'server/qr.js', 'scripts/build-web.js', '.github/workflows/pages.yml']
   workflow_dispatch:
 permissions:
   contents: read
