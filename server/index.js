@@ -423,6 +423,19 @@ async function route(req, res) {
   const localOnly = () => { if (!local) throw Object.assign(new Error('Only available on the TV computer'), { status: 403 }); };
 
   if (p.startsWith('/bg/')) return serveStatic(res, BG_DIR, decodeURIComponent(p.slice(4)));
+
+  // ---- moving to Lumen Web: everything the phone needs to run Lumen without this computer (paired phones only)
+  if (p === '/api/transfer' && m === 'GET') {
+    const s = S(), tmdbItem = (i) => i && Number.isInteger(+i.id) && +i.id > 0 && (i.type === 'movie' || i.type === 'tv');
+    return send(res, 200, {
+      lumenTransfer: 1,
+      settings: { tmdbKey: s.tmdbKey || '', region: s.region, userName: s.userName || '', accent: s.accent, font: s.font, watchLinks: watchLinks(), services: s.services },
+      folders: store.d.folders.map((f) => ({ ...f, items: f.items.filter(tmdbItem) })),
+      recent: store.d.recent.filter(tmdbItem).slice(0, 40),
+      watching: store.d.watching.filter(tmdbItem).slice(0, 30),
+      filmSites: store.d.filmSites || {},
+    });
+  }
   if (p === '/api/sleep' && m === 'GET') return send(res, 200, { sleep: sleepInfo() });
   if (p === '/api/sleep' && m === 'POST') { const b = await json(req); return send(res, 200, { sleep: setSleep(b.minutes) }); }
 

@@ -85,6 +85,35 @@ export async function api(path, opts = {}) {
   if ((mm = p.match(/^\/api\/collection\/(\d+)$/))) return tmdb.collection(+mm[1]);
   if ((mm = p.match(/^\/api\/season\/(\d+)\/(\d+)$/))) return tmdb.season(+mm[1], +mm[2]);
   if (p === '/api/search') return { results: await tmdb.search((url.searchParams.get('q') || '').slice(0, 100)) };
+  // bringing everything across from Lumen on the laptop (its phone page makes the code: Library › Use Lumen without the laptop)
+  if (p === '/api/import' && m === 'POST') {
+    const t = b; if (!t || t.lumenTransfer !== 1) throw err('That isn’t a Lumen transfer code. Copy it again from Lumen on your laptop.');
+    const s = S(), from = t.settings || {};
+    if (from.tmdbKey) { const old = s.tmdbKey; s.tmdbKey = String(from.tmdbKey).trim(); try { await tmdb.section('movies'); } catch (e) { s.tmdbKey = old; if (!old) throw err('The TMDB key from your laptop didn’t work here. Paste your key above instead.'); } }
+    if (/^[A-Z]{2}$/.test(from.region || '')) s.region = from.region;
+    if (from.userName) s.userName = String(from.userName).slice(0, 40);
+    if (from.accent) s.accent = from.accent;
+    if (FONTS.includes(from.font)) s.font = from.font;
+    if (from.services && typeof from.services === 'object') s.services = { ...s.services, ...from.services };
+    for (const w of Array.isArray(from.watchLinks) ? from.watchLinks : []) {
+      const pat = cleanWatchPattern(w && w.pattern); if (!pat || s.watchLinks.some((x) => x.pattern === pat) || s.watchLinks.length >= 8) continue;
+      s.watchLinks.push({ id: typeof w.id === 'string' ? w.id.slice(0, 60) : uid(), pattern: pat, name: String(w.name || hostOf(pat)).slice(0, 40) });
+    }
+    let films = 0;
+    for (const f of Array.isArray(t.folders) ? t.folders : []) {
+      const name = String(f.name || '').trim().slice(0, 40); if (!name) continue;
+      let mine = db.folders.find((x) => x.name.toLowerCase() === name.toLowerCase());
+      if (!mine) { mine = { id: uid(), name, items: [], createdAt: Date.now() }; db.folders.push(mine); }
+      for (const i of Array.isArray(f.items) ? f.items : []) { const c = cleanItem(i); if (!c.id || mine.items.some((x) => x.id === c.id && x.type === c.type)) continue; mine.items.push({ ...c, addedAt: +i.addedAt || Date.now() }); films++; }
+    }
+    const keyOf = (i) => `${i.type}:${i.id}`;
+    const merge = (mineList, theirs, max) => { const seen = new Set(mineList.map(keyOf)); return [...mineList, ...(Array.isArray(theirs) ? theirs : []).filter((i) => i && +i.id && !seen.has(keyOf(i)))].slice(0, max); };
+    db.recent = merge(db.recent, t.recent, 40);
+    db.watching = merge(db.watching, (t.watching || []).map((w) => ({ ...w, key: keyOf(w) })), 30);
+    if (t.filmSites && typeof t.filmSites === 'object') db.filmSites = { ...t.filmSites, ...db.filmSites };
+    save();
+    return { ok: true, websites: s.watchLinks.length, folders: db.folders.length, films };
+  }
   if (p === '/api/folders' && m === 'GET') return { folders: db.folders };
   if (p === '/api/folders' && m === 'POST') {
     const name = String(b.name || '').trim().slice(0, 40); if (!name) throw err('Give the folder a name.');

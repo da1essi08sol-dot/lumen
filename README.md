@@ -47,6 +47,12 @@ Lumen sits in the system tray (bottom right, by the clock). From there you can s
 (handy when the laptop's own screen and the TV are both on), turn **Start Lumen when I sign in** on or off, check for
 updates, open the data folder, or quit. Closing the TV window (Alt + F4) only hides it; your phone can bring it back.
 
+## What's new in 2.0.3
+
+- **Copy My Lumen:** on your phone's Lumen page, open **Library** and tap **Copy My Lumen** to bring your TMDB key, Watch
+  websites, folders and Continue Watching across to Lumen on your phone (Settings › **Bring from your laptop**).
+- The phone page no longer zooms or selects text by accident.
+
 ## What's new in 2.0.2
 
 - **Privacy** page (Settings › About › Privacy, and [PRIVACY.md](PRIVACY.md)): what Lumen keeps and who it talks to.

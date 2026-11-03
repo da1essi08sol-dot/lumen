@@ -77,3 +77,16 @@ test('the font style can be chosen, and anything unknown is ignored', async () =
   c = await S.api('/api/config');
   assert.strictEqual(c.json.font, 'serif');
 });
+
+test('Copy My Lumen hands over Watch websites, folders and the key, and only to paired devices', async () => {
+  await S.api('/api/settings', { method: 'POST', body: { watchLinks: [{ pattern: 'https://example.com/watch/', name: 'Example' }] } });
+  const f = await S.api('/api/folders', { method: 'POST', body: { name: 'Transfer test' } });
+  await S.api(`/api/folders/${f.json.id}/items`, { method: 'POST', body: { item: { id: 550, type: 'movie', title: 'Fight Club', year: 1999 } } });
+  const r = await S.api('/api/transfer');
+  assert.strictEqual(r.status, 200);
+  assert.strictEqual(r.json.lumenTransfer, 1);
+  assert.ok(r.json.settings.watchLinks.some((w) => w.pattern === 'https://example.com/watch/'));
+  assert.ok(r.json.folders.find((x) => x.name === 'Transfer test').items.some((i) => i.id === 550));
+  const addr = otherAddress();
+  if (addr) assert.notStrictEqual((await S.api('/api/transfer', { host: addr })).status, 200);
+});

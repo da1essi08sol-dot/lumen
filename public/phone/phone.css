@@ -184,3 +184,10 @@ img { display: block; }
 .fchips { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .fchips button { height: 52px; border-radius: 12px; background: rgba(255,255,255,.07); font-family: var(--tf); font-weight: var(--tw); font-stretch: var(--tst); font-size: 19px; }
 .fchips button.on { background: rgb(var(--acc)); color: var(--acc-ink); }
+
+/* feel like an app: no accidental zooming or text selection (typing boxes still work normally) */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; }
+body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+img { -webkit-user-drag: none; }
+input, textarea, select, [contenteditable] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; font-size: max(16px, 1em); }
+.ws-card textarea.field { height: auto; padding: 12px 14px; resize: none; font-family: inherit; }

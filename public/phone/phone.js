@@ -139,7 +139,10 @@ function popSub() {
   v.onclose?.();
   if (!subs.length) document.body.style.overflow = '';
 }
-addEventListener('popstate', () => popSub());
+// Back can jump several pages at once (closeSubs), so close every page above where history now is
+addEventListener('popstate', (e) => { const keep = e.state?.sub || 0; do popSub(); while (subs.length > keep); });
+// close every film page, folder and viewer: one history step back per page, done in one go
+function closeSubs() { if (subs.length) history.go(-subs.length); }
 const back = () => history.back();
 
 // ---------------------------------------------------------------- film page
@@ -194,7 +197,7 @@ function openDetail(item) {
         r.querySelector('[data-w]').onclick = () => watchOut(p.url, d, p.name, null, 0);
         wl.appendChild(r);
       }
-      if (!links.length && !d.providers?.free?.length) { const r = el(`<div class="wl"><div class="lbl"><b>No Watch website yet</b><small>Add one in Settings and every film gets a Watch button</small></div><button class="btn sm">${icon('settings')}Settings</button></div>`); r.querySelector('button').onclick = () => { while (subs.length) history.back(); setTimeout(() => showTab('settings'), 50); }; wl.appendChild(r); }
+      if (!links.length && !d.providers?.free?.length) { const r = el(`<div class="wl"><div class="lbl"><b>No Watch website yet</b><small>Add one in Settings and every film gets a Watch button</small></div><button class="btn sm">${icon('settings')}Settings</button></div>`); r.querySelector('button').onclick = () => { closeSubs(); showTab('settings'); }; wl.appendChild(r); }
     }
     for (const w of WEB ? [] : links) {
       const isMain = w === main, res = isMain && resume;
@@ -423,7 +426,7 @@ let tab = 'home';
 const TABS = [['home', 'Home', 'home'], ['movies', 'Films', 'film'], ['tv', 'TV Shows', 'tv'], ['search', 'Search', 'search'], ['library', 'Library', 'folder'], WEB ? ['settings', 'Settings', 'settings'] : ['remote', 'Remote', 'remote']];
 function shell() {
   app.innerHTML = `<main id="main"></main><nav class="tabbar">${TABS.map(([k, l, ic]) => `<button data-t="${k}">${icon(ic)}<span>${l}</span></button>`).join('')}</nav>`;
-  app.querySelectorAll('.tabbar button').forEach((b) => (b.onclick = () => { haptic(); if (b.dataset.t === 'remote') { location.href = '/remote/'; return; } while (subs.length) history.back(); showTab(b.dataset.t, b.dataset.t === tab); }));
+  app.querySelectorAll('.tabbar button').forEach((b) => (b.onclick = () => { haptic(); if (b.dataset.t === 'remote') { location.href = '/remote/'; return; } closeSubs(); showTab(b.dataset.t, b.dataset.t === tab); }));
 }
 function showTab(t, again = false) {
   tab = t;
@@ -495,7 +498,37 @@ async function libraryView(v) {
     const add = el(`<button class="tile add">${icon('folderPlus')}New Folder</button>`); add.onclick = () => newFolderSheet();
     tiles.appendChild(add);
     v.appendChild(tiles);
+    if (!WEB) v.appendChild(transferCard());
   } catch (e) { v.appendChild(errorBox(e, () => showTab('library'))); }
+}
+// ---------------------------------------------------------------- moving to Lumen Web (no laptop)
+const WEB_URL = 'https://da1essi08sol-dot.github.io/lumen/';
+const b64u = (str) => btoa(String.fromCharCode(...new TextEncoder().encode(str))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const unb64u = (str) => new TextDecoder().decode(Uint8Array.from(atob(str.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)));
+function transferCard() {
+  const c = el(`<section class="ws-card" style="margin:26px 20px 30px"><h3>Use Lumen without the laptop</h3>
+    <p>Lumen also runs on this phone by itself. This copies your TMDB key, Watch websites, folders and Continue Watching across.</p>
+    <button class="btn primary" id="tr" style="width:100%">Copy My Lumen</button><p class="small" id="trm"></p></section>`);
+  c.querySelector('#tr').onclick = async () => {
+    try {
+      const link = WEB_URL + '#import=' + b64u(JSON.stringify(await api('/api/transfer')));
+      // the laptop's page isn't https, where phones often have no clipboard API: fall back to a hidden text box
+      let copied = false; try { await navigator.clipboard.writeText(link); copied = true; } catch {}
+      if (!copied) { const ta = el('<textarea readonly style="position:fixed;opacity:0;top:0"></textarea>'); ta.value = link; document.body.appendChild(ta); ta.focus(); ta.setSelectionRange(0, link.length); try { copied = document.execCommand('copy'); } catch {} ta.remove(); }
+      if (!copied) throw new Error('Couldn’t copy. Try again.');
+      c.querySelector('#trm').innerHTML = `Copied. Open <b>Lumen</b> from your home screen (or <a href="${esc(link)}" target="_blank" rel="noopener">open it here</a>), go to <b>Settings › Bring from your laptop</b> and tap <b>Paste and Bring Across</b>.`;
+      toast('Copied');
+    } catch (e) { toast(e.message || 'Couldn’t copy. Update Lumen on the laptop first.'); }
+  };
+  return c;
+}
+async function importTransfer(text) {
+  const m = String(text || '').trim().match(/(?:#import=)?([A-Za-z0-9_-]{20,})\s*$/);
+  if (!m) throw new Error('Copy it again from Lumen on your laptop (Library › Use Lumen without the laptop).');
+  let data; try { data = JSON.parse(unb64u(m[1])); } catch { throw new Error('That code looks cut short. Copy it again from your laptop.'); }
+  const r = await api('/api/import', { method: 'POST', body: data });
+  cfg = { ...cfg, ...(await api('/api/config')) }; applyLook(); cache.clear();
+  toast(`Brought across: ${r.websites} Watch website${r.websites === 1 ? '' : 's'}, ${r.folders} folder${r.folders === 1 ? '' : 's'}`);
 }
 function openFolder(f) {
   const v = el(`<div class="view sub"><div class="bar"><button class="back" aria-label="Back" style="width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.12)">${icon('back')}</button><h1 style="font-size:24px">${esc(f.name)}</h1></div><div class="grid"></div></div>`);
@@ -580,15 +613,28 @@ function settingsView(v) {
   look.querySelectorAll('[data-acc]').forEach((b) => (b.onclick = async () => { haptic(); await saveSettings({ accent: b.dataset.acc }); look.querySelectorAll('[data-acc]').forEach((x) => x.classList.toggle('on', x === b)); }));
   look.querySelectorAll('[data-font]').forEach((b) => (b.onclick = async () => { haptic(); await saveSettings({ font: b.dataset.font }); look.querySelectorAll('[data-font]').forEach((x) => x.classList.toggle('on', x === b)); }));
   box.appendChild(look);
+  const tr = el(`<section class="ws-card"><h3>Bring from your laptop</h3>
+    <p>On your laptop's phone page (Lumen's remote), open <b>Library</b> and tap <b>Copy My Lumen</b>. Then come back here.</p>
+    <button class="btn primary" id="tp" style="width:100%">Paste and Bring Across</button>
+    <details style="margin-top:10px"><summary class="small">Paste didn't work?</summary><textarea class="field" id="tt" rows="3" placeholder="Paste the copied link here" style="margin-top:8px"></textarea><button class="btn" id="tb" style="width:100%">Bring Across</button></details></section>`);
+  const doImport = async (text) => { try { await importTransfer(text); showTab('settings'); } catch (e) { toast(e.message); } };
+  tr.querySelector('#tp').onclick = async () => { let t = ''; try { t = await navigator.clipboard.readText(); } catch { tr.querySelector('details').open = true; tr.querySelector('#tt').focus(); return; } doImport(t); };
+  tr.querySelector('#tb').onclick = () => doImport(tr.querySelector('#tt').value);
+  box.appendChild(tr);
   box.appendChild(el(`<section class="ws-card"><h3>About</h3><p>Lumen keeps your settings, folders and Continue Watching on this phone. There’s no account, no adverts and no tracking.</p>
     <p class="small">Film data and images: TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB. <a href="https://github.com/da1essi08sol-dot/lumen/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy</a></p></section>`));
 }
+
+// iPhone Safari ignores user-scalable=no, so stop pinch zoom here too (touch-action in phone.css stops double-tap zoom)
+for (const ev of ['gesturestart', 'gesturechange']) document.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 
 // ---------------------------------------------------------------- start
 async function start() {
   try { cfg = { ...cfg, ...(await api('/api/config')) }; } catch (e) { app.innerHTML = ''; app.appendChild(errorBox(e, start)); return; }
   applyLook();
   shell();
+  if (WEB && location.hash.startsWith('#import=')) { const h = location.hash; history.replaceState(null, '', location.pathname); try { await importTransfer(h); } catch (e) { toast(e.message); } }
   if (WEB && !cfg.hasKey) { showTab('settings'); return; }
   showTab('home');
   if (!WEB) startPolling();

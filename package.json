@@ -1,7 +1,7 @@
 {
   "name": "lumen",
   "productName": "Lumen",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Lumen: a TV interface for Windows with an iPhone remote",
   "author": "da1essi08sol-dot",
   "license": "UNLICENSED",
@@ -25,10 +25,27 @@
     "appId": "tv.lumen.app",
     "productName": "Lumen",
     "asar": false,
-    "directories": { "output": "dist", "buildResources": "build" },
-    "files": ["electron/**", "server/**", "public/**", "build/icon.*", "package.json", "!**/*.md"],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**",
+      "server/**",
+      "public/**",
+      "build/icon.*",
+      "package.json",
+      "!**/*.md"
+    ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "build/icon.ico",
       "artifactName": "Lumen-Setup-${version}.exe"
     },
@@ -41,6 +58,13 @@
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false
     },
-    "publish": [{ "provider": "github", "owner": "da1essi08sol-dot", "repo": "lumen", "releaseType": "release" }]
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "da1essi08sol-dot",
+        "repo": "lumen",
+        "releaseType": "release"
+      }
+    ]
   }
 }
