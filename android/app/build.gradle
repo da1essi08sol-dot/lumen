@@ -7,8 +7,8 @@ android {
         applicationId 'tv.lumen.browser'
         minSdk 26
         targetSdk 34
-        versionName pkg.version
-        versionCode (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
+        versionName = pkg.version
+        versionCode = (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger()
     }
     signingConfigs {
         release {
