@@ -73,7 +73,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
 
     const state = {
       win, label, url, closed: false, revealed: false, timer: null, poll: null,
-      progress: null, allowed: new Set([site(url)]), graceUntil: Date.now() + 10000,
+      progress: null, playerFrame: null, hasVideo: false, allowed: new Set([site(url)]), graceUntil: Date.now() + 10000,
       stats: { popups: 0, redirects: 0, playing: false }, pointer: { x: Math.round(bounds.width / 2), y: Math.round(bounds.height / 2) }
     };
     active = state;
@@ -134,17 +134,26 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
     win.webContents.on('will-prevent-unload', (event) => event.preventDefault());
     win.on('closed', close);
 
-    const evaluate = (js) => {
+    const evaluate = (js, frame = null) => {
       if (state.closed || win.isDestroyed()) return Promise.resolve(null);
-      return win.webContents.executeJavaScript(js, true).catch(() => null);
+      const target = frame || win.webContents.mainFrame;
+      return target.executeJavaScript(js, true).catch(() => null);
     };
     const poll = async () => {
-      const result = await evaluate(PLAYBACK_PROBE);
-      if (state.closed) return;
-      if (result?.playing) { state.stats.playing = true; reveal(); }
-      if (result?.found && result.d > 60) {
-        state.progress = { t: result.t, d: result.d, paused: result.paused, at: Date.now() };
-        assist?.onProgress?.({ t: result.t, d: result.d });
+      if (state.closed || win.isDestroyed()) return;
+      let frames = [];
+      try { frames = win.webContents.mainFrame.framesInSubtree || [win.webContents.mainFrame]; } catch {}
+      for (const frame of frames) {
+        const result = await evaluate(PLAYBACK_PROBE, frame);
+        if (state.closed) return;
+        if (result?.found && result.d > 60) {
+          state.playerFrame = frame;
+          state.hasVideo = true;
+          state.progress = { t: result.t, d: result.d, paused: result.paused, at: Date.now() };
+          assist?.onProgress?.({ t: result.t, d: result.d });
+          if (result.playing) { state.stats.playing = true; reveal(); }
+          break;
+        }
       }
     };
     state.poll = setInterval(poll, 1500);
@@ -166,7 +175,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
       stop: () => { clearInterval(state.poll); clearTimeout(state.timer); },
       setBrightness: async (factor) => evaluate("document.documentElement.style.filter='brightness(" + Math.max(.1, Math.min(1, Number(factor) || 1)) + ")'"),
       status: () => state.progress ? { ...state.progress, t: state.progress.paused ? state.progress.t : state.progress.t + (Date.now() - state.progress.at) / 1000 } : null,
-      playing: () => !!state.stats.playing,
+      playing: () => !!state.hasVideo,
       canSave: () => true,
       saveCurrent: async () => win.isDestroyed() ? null : win.webContents.getURL(),
       key: async (key) => {
@@ -189,7 +198,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
         const js = "(async()=>{const v=[...document.querySelectorAll('video')].filter(x=>(x.duration||0)>60).sort((a,b)=>b.currentTime-a.currentTime)[0];if(!v)return null;const c=" +
           JSON.stringify(cmd) + ";if(c==='toggle'){if(v.paused)await v.play().catch(()=>{});else v.pause()}else if(c==='play')await v.play().catch(()=>{});else if(c==='pause')v.pause();else if(c==='seek')v.currentTime=Math.max(0,Math.min(v.duration-1,v.currentTime+" +
           n + "));else if(c==='seekTo')v.currentTime=Math.max(0,Math.min(v.duration-1," + n + "));return {t:v.currentTime,d:v.duration,paused:v.paused}})()";
-        const r = await evaluate(js);
+        const r = await evaluate(js, state.playerFrame);
         if (r) state.progress = { ...r, at: Date.now() };
         return controller.status();
       }
