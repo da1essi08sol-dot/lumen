@@ -169,6 +169,19 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
       playing: () => !!state.stats.playing,
       canSave: () => true,
       saveCurrent: async () => win.isDestroyed() ? null : win.webContents.getURL(),
+      key: async (key) => {
+        if (win.isDestroyed()) return false;
+        if (key === 'browserback') { if (win.webContents.canGoBack()) win.webContents.goBack(); return true; }
+        if (key === 'mediaplaypause') return controller.control('toggle');
+        const map = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', enter: 'Enter', escape: 'Escape', space: ' ', backspace: 'Backspace', tab: 'Tab', f11: 'F11', altleft: 'Alt+ArrowLeft', altright: 'Alt+ArrowRight' };
+        const keyCode = map[String(key).toLowerCase()] || key;
+        win.webContents.sendInputEvent({ type: 'keyDown', keyCode });
+        win.webContents.sendInputEvent({ type: 'keyUp', keyCode });
+        return true;
+      },
+      type: async (value) => { if (!win.isDestroyed()) win.webContents.insertText(String(value).slice(0, 500)); },
+      mouseMove: async (x, y) => { if (!win.isDestroyed()) win.webContents.sendInputEvent({ type: 'mouseMove', x: Math.max(0, Number(x)||0), y: Math.max(0, Number(y)||0) }); },
+      click: async (button = 'left') => { if (!win.isDestroyed()) { const p = win.webContents.getFocusedFrame(); void p; win.webContents.sendInputEvent({ type: 'mouseDown', x: 100, y: 100, button, clickCount: 1 }); win.webContents.sendInputEvent({ type: 'mouseUp', x: 100, y: 100, button, clickCount: 1 }); } },
       stats: state.stats,
       allowed: state.allowed,
       control: async (cmd, arg = 0) => {
