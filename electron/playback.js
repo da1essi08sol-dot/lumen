@@ -5,21 +5,7 @@
 const { session: electronSession } = require('electron');
 const { site } = require('../server/system/guard');
 
-const BLOCKED_HOSTS = new Set([
-  'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
-  'adservice.google.com', 'adnxs.com', 'adsrvr.org', 'taboola.com',
-  'outbrain.com', 'popads.net', 'popcash.net', 'exoclick.com',
-  'trafficjunky.net', 'propellerads.com', 'zedo.com', 'adsterra.com',
-  'ad-maven.com', 'pushground.com', 'mgid.com'
-]);
-
-function isBlockedRequest(raw) {
-  let host;
-  try { host = new URL(raw).hostname.toLowerCase().replace(/^www\./, ''); }
-  catch { return false; }
-  for (const domain of BLOCKED_HOSTS) if (host === domain || host.endsWith('.' + domain)) return true;
-  return false;
-}
+const { isBlockedRequest } = require('./request-filter');
 
 const PLAYBACK_PROBE = `(() => {
   const videos = [...document.querySelectorAll('video')].filter(v => (v.duration || 0) > 60);
@@ -211,4 +197,4 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
   return { open, close, isOpen: () => !!active };
 }
 
-module.exports = { createPlayback, isBlockedRequest };
+module.exports = { createPlayback };
