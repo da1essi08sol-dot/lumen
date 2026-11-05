@@ -59,7 +59,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
 
     const state = {
       win, label, url, closed: false, revealed: false, timer: null, poll: null,
-      progress: null, lastProgressSaved: 0, playerFrame: null, hasVideo: false, allowed: new Set([site(url)]), graceUntil: Date.now() + 10000,
+      progress: null, lastProgressSaved: 0, resumeApplied: false, playerFrame: null, hasVideo: false, allowed: new Set([site(url)]), graceUntil: Date.now() + 10000,
       stats: { popups: 0, redirects: 0, playing: false }, pointer: { x: Math.round(bounds.width / 2), y: Math.round(bounds.height / 2) }
     };
     active = state;
@@ -135,6 +135,11 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
         if (result?.found && result.d > 60) {
           state.playerFrame = frame;
           state.hasVideo = true;
+          if (!state.resumeApplied) {
+            state.resumeApplied = true;
+            const resumeAt = Math.max(0, Number(assist?.resumeAt) || 0);
+            if (resumeAt > 60) await evaluate('(function(){const v=[...document.querySelectorAll(\'video\')].filter(x=>(x.duration||0)>60).sort((a,b)=>b.currentTime-a.currentTime)[0];if(v&&v.currentTime<'+resumeAt+'-30){v.currentTime=Math.min(v.duration-1,'+resumeAt+');return true}return false})()', frame);
+          }
           state.progress = { t: result.t, d: result.d, paused: result.paused, at: Date.now() };
           if (assist?.onProgress && Date.now() - state.lastProgressSaved >= 10000) { state.lastProgressSaved = Date.now(); assist.onProgress({ t: result.t, d: result.d }); }
           if (result.playing) { state.stats.playing = true; reveal(); }
