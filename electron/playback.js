@@ -74,7 +74,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
     const state = {
       win, label, url, closed: false, revealed: false, timer: null, poll: null,
       progress: null, allowed: new Set([site(url)]), graceUntil: Date.now() + 10000,
-      stats: { popups: 0, redirects: 0, playing: false }
+      stats: { popups: 0, redirects: 0, playing: false }, pointer: { x: Math.round(bounds.width / 2), y: Math.round(bounds.height / 2) }
     };
     active = state;
 
@@ -180,8 +180,8 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
         return true;
       },
       type: async (value) => { if (!win.isDestroyed()) win.webContents.insertText(String(value).slice(0, 500)); },
-      mouseMove: async (x, y) => { if (!win.isDestroyed()) win.webContents.sendInputEvent({ type: 'mouseMove', x: Math.max(0, Number(x)||0), y: Math.max(0, Number(y)||0) }); },
-      click: async (button = 'left') => { if (!win.isDestroyed()) { const p = win.webContents.getFocusedFrame(); void p; win.webContents.sendInputEvent({ type: 'mouseDown', x: 100, y: 100, button, clickCount: 1 }); win.webContents.sendInputEvent({ type: 'mouseUp', x: 100, y: 100, button, clickCount: 1 }); } },
+      mouseMove: async (dx, dy) => { if (!win.isDestroyed()) { state.pointer.x = Math.max(0, Math.min(bounds.width, state.pointer.x + (Number(dx)||0))); state.pointer.y = Math.max(0, Math.min(bounds.height, state.pointer.y + (Number(dy)||0))); win.webContents.sendInputEvent({ type: 'mouseMove', x: state.pointer.x, y: state.pointer.y }); } },
+      click: async (button = 'left') => { if (!win.isDestroyed()) { win.webContents.sendInputEvent({ type: 'mouseDown', x: state.pointer.x, y: state.pointer.y, button, clickCount: 1 }); win.webContents.sendInputEvent({ type: 'mouseUp', x: state.pointer.x, y: state.pointer.y, button, clickCount: 1 }); } },
       stats: state.stats,
       allowed: state.allowed,
       control: async (cmd, arg = 0) => {
