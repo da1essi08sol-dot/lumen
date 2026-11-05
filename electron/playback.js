@@ -41,7 +41,7 @@ const SOURCE_SWITCH_JS = `(() => {
   const labels = unique.map(el => (el.innerText || el.getAttribute('aria-label') || el.title || '').trim());
   const current = unique.findIndex(el => el.getAttribute('aria-pressed') === 'true' || el.getAttribute('aria-selected') === 'true' || /active|selected|current/i.test(el.className || ''));
   let index = Number(window.__lumenSourceIndex);
-  if (!Number.isInteger(index)) index = Math.max(0, current);
+  if (!Number.isInteger(index)) index = current;
   if (!unique.length || index + 1 >= unique.length) return { switched:false, labels };
   index++;
   window.__lumenSourceIndex = index;
@@ -139,9 +139,12 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
     // Escape is the universal Lumen Back action. Never leave the viewer trapped in a site.
     win.webContents.on('before-input-event', (event, input) => {
       if (input.type !== 'keyDown') return;
-      if (input.key === 'Escape' || (input.key === 'F11' && input.control)) {
+      if (input.key === 'Escape') {
         event.preventDefault();
         close();
+      } else if (input.key === 'F11') {
+        event.preventDefault();
+        try { win.setKiosk(true); win.setFullScreen(true); win.focus(); } catch {}
       }
     });
     win.on('closed', close);
@@ -178,7 +181,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
           if (result.playing) state.stats.playing = true;
           // If a source has no playable video, or a detected video makes no progress, try
           // the next named source button (VidSync, VidFast, VidPlay, etc.) on that page.
-          const stalled = state.hasVideo && !result.paused && Date.now() - state.lastProgressAt > 18000;
+          const stalled = state.hasVideo && ((!state.stats.playing && Date.now() - state.startedAt > 18000) || (state.stats.playing && !result.paused && Date.now() - state.lastProgressAt > 18000));
           const missing = !state.hasVideo && Date.now() - state.startedAt > 18000;
           if ((stalled || missing) && state.sourceAttempts < 5 && Date.now() - state.lastSourceSwitchAt > 12000) {
             const switched = await evaluate(SOURCE_SWITCH_JS, frame);
