@@ -12,10 +12,10 @@ const PLAYBACK_PROBE = `(() => {
   const v = videos.sort((a,b) => (b.currentTime || 0) - (a.currentTime || 0))[0] || document.querySelector('video');
   if (!v) {
     const selectors = ['.jw-display-icon-display','.jw-icon-display','.vjs-big-play-button','.plyr__control--overlaid','.fp-play','.play-button','.play-btn','button[aria-label*="play" i]','[class*="big-play" i]'];
-    for (const s of selectors) { const el = document.querySelector(s); if (el && el.getClientRects().length) { try { el.click(); } catch {} break; } }
+    if (!window.__lumenNoVideoClickAttempted) { window.__lumenNoVideoClickAttempted = true; for (const s of selectors) { const el = document.querySelector(s); if (el && el.getClientRects().length) { try { el.click(); } catch {} break; } } }
     return { found: false };
   }
-  if (v.paused) { try { const p = v.play(); if (p && p.catch) p.catch(() => {}); } catch {} }
+  if (v.paused && !window.__lumenAutoPlayAttempted) { window.__lumenAutoPlayAttempted = true; try { const p = v.play(); if (p && p.catch) p.catch(() => {}); } catch {} }
   const playing = !v.paused && v.currentTime > 0.2;
   if (playing && !window.__lumenPlaybackFill) {
     window.__lumenPlaybackFill = true;
@@ -59,7 +59,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
 
     const state = {
       win, label, url, closed: false, revealed: false, timer: null, poll: null,
-      progress: null, playerFrame: null, hasVideo: false, allowed: new Set([site(url)]), graceUntil: Date.now() + 10000,
+      progress: null, lastProgressSaved: 0, playerFrame: null, hasVideo: false, allowed: new Set([site(url)]), graceUntil: Date.now() + 10000,
       stats: { popups: 0, redirects: 0, playing: false }, pointer: { x: Math.round(bounds.width / 2), y: Math.round(bounds.height / 2) }
     };
     active = state;
@@ -136,7 +136,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
           state.playerFrame = frame;
           state.hasVideo = true;
           state.progress = { t: result.t, d: result.d, paused: result.paused, at: Date.now() };
-          assist?.onProgress?.({ t: result.t, d: result.d });
+          if (assist?.onProgress && Date.now() - state.lastProgressSaved >= 10000) { state.lastProgressSaved = Date.now(); assist.onProgress({ t: result.t, d: result.d }); }
           if (result.playing) { state.stats.playing = true; reveal(); }
           break;
         }
