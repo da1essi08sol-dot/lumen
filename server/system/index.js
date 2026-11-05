@@ -93,6 +93,23 @@ class WindowsSystem extends EventEmitter {
       .catch(() => setTimeout(() => this._bringToFront(ext, tries + 1), 250));
   }
   openWeb(url, { label = '', youtube = false, browser = 'edge', assist = null, setup = false, smoothSkip = true } = {}) {
+    // Normal Watch playback is hosted inside Lumen's own Electron Chromium surface.
+    // The extension-install/setup flow remains in the user's external browser.
+    const shell = global.lumenShell;
+    if (!setup && shell?.openPlayback) {
+      this.closeExternal(true);
+      const ext = { child: null, kind: youtube ? 'youtube' : 'web', label, pid: null, guard: null };
+      const controller = shell.openPlayback({
+        url, label, youtube, assist,
+        onClosed: () => {
+          if (this.external === ext) { this.external = null; this.emit('external', null); }
+        }
+      });
+      ext.guard = controller;
+      this.external = ext;
+      this.emit('external', { kind: ext.kind, label });
+      return { kind: ext.kind, label };
+    }
     const useBrave = browser === 'brave' && this.brave;
     const exe = useBrave ? this.brave : this.browser;
     if (!exe) throw Object.assign(new Error('Microsoft Edge or Chrome was not found'), { status: 500 });
@@ -124,6 +141,11 @@ class WindowsSystem extends EventEmitter {
     this.external = null;
     // Close the browser properly first, so it writes your sign-ins to disk (a forced close can lose them);
     // only if it hasn't closed after a few seconds is it forced.
+    if (ext.guard?.closeBrowser) {
+      Promise.resolve(ext.guard.closeBrowser()).catch((e) => console.error('[browser] close:', e.message)).finally(() => ext.guard?.stop?.());
+      if (!silent) { this.emit('external', null); }
+      return true;
+    }
     const force = () => { if (!ext.exited) execFile('taskkill', ['/PID', String(ext.pid), '/T', '/F'], { windowsHide: true }, () => {}); };
     const polite = () => execFile('taskkill', ['/PID', String(ext.pid), '/T'], { windowsHide: true }, () => {});
     Promise.resolve(ext.guard?.closeBrowser?.()).then((ok) => { if (!ok) polite(); }).catch(polite).finally(() => ext.guard?.stop());
