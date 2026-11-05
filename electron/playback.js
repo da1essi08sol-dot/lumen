@@ -154,6 +154,28 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
       const target = frame || win.webContents.mainFrame;
       return target.executeJavaScript(js, true).catch(() => null);
     };
+    // A streaming player is often nested several iframes deep. Expand each iframe
+    // ancestor too, otherwise the video fills only a small rectangle inside the site.
+    const expandFrameAncestors = async (frame) => {
+      let child = frame;
+      for (let depth = 0; depth < 5 && child?.parent; depth++) {
+        const parent = child.parent;
+        let host = '';
+        try { host = new URL(child.url).hostname; } catch {}
+        const js = `(() => {
+          const frames = [...document.querySelectorAll('iframe')];
+          const matches = frames.filter(f => { try { return new URL(f.src, location.href).hostname === ${JSON.stringify(host)}; } catch { return false; } });
+          const f = (matches.length ? matches : frames).sort((a,b) => b.getBoundingClientRect().width*b.getBoundingClientRect().height - a.getBoundingClientRect().width*a.getBoundingClientRect().height)[0];
+          if (!f) return false;
+          Object.assign(f.style, {position:'fixed',inset:'0',width:'100vw',height:'100vh',maxWidth:'none',maxHeight:'none',margin:'0',padding:'0',border:'0',zIndex:'2147483647',background:'#000'});
+          document.documentElement.style.setProperty('overflow','hidden','important');
+          document.body && document.body.style.setProperty('overflow','hidden','important');
+          return true;
+        })()`;
+        await evaluate(js, parent);
+        child = parent;
+      }
+    };
     const poll = async () => {
       if (state.closed || win.isDestroyed()) return;
       let frames = [];
@@ -164,6 +186,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
         if (result?.found && result.d > 60) {
           state.playerFrame = frame;
           state.hasVideo = true;
+          if (frame !== win.webContents.mainFrame) await expandFrameAncestors(frame);
           if (!state.resumeApplied) {
             state.resumeApplied = true;
             const resumeAt = Math.max(0, Number(assist?.resumeAt) || 0);
