@@ -29,20 +29,38 @@ const PLAYBACK_PROBE = `(() => {
       if (el && !el.disabled) return el;
     }
     const candidates = [...document.querySelectorAll('button,[role="button"],a,div,span')].filter(visible);
-    return candidates.find(el => {
+    const labelled = candidates.find(el => {
       if (el.disabled || el.closest('[aria-hidden="true"]')) return false;
       const label = [el.innerText, el.getAttribute('aria-label'), el.getAttribute('title'), el.className]
         .filter(x => typeof x === 'string').join(' ').trim();
       if (!label || label.length > 90 || /playlist|playback.?rate|display/i.test(label)) return false;
       return /(^|\\W)(play|start|resume|watch)(\\W|$)|big.?play|play.?button/i.test(label);
-    }) || null;
+    });
+    if (labelled) return labelled;
+    // Some players use a central poster overlay with no accessible text.
+    let centre = document.elementFromPoint(Math.floor(innerWidth / 2), Math.floor(innerHeight / 2));
+    for (let depth = 0; centre && depth < 6; depth++, centre = centre.parentElement) {
+      const cls = String(centre.className || '');
+      const role = centre.getAttribute && centre.getAttribute('role');
+      const cursor = getComputedStyle(centre).cursor;
+      if (visible(centre) && (role === 'button' || cursor === 'pointer') && /play|start|overlay|poster|control/i.test(cls)) return centre;
+    }
+    return null;
   };
   const clickPlayControl = () => {
-    if (Date.now() - (window.__lumenLastUiPlayAttempt || 0) < 2500) return false;
+    if (Date.now() - (window.__lumenLastUiPlayAttempt || 0) < 1800) return false;
     const el = findPlayControl();
     if (!el) return false;
     window.__lumenLastUiPlayAttempt = Date.now();
-    try { el.click(); return true; } catch { return false; }
+    try {
+      const opts = { bubbles: true, cancelable: true, view: window, button: 0 };
+      if (typeof PointerEvent === 'function') el.dispatchEvent(new PointerEvent('pointerdown', { ...opts, pointerType: 'mouse', isPrimary: true }));
+      el.dispatchEvent(new MouseEvent('mousedown', opts));
+      if (typeof PointerEvent === 'function') el.dispatchEvent(new PointerEvent('pointerup', { ...opts, pointerType: 'mouse', isPrimary: true }));
+      el.dispatchEvent(new MouseEvent('mouseup', opts));
+      el.click();
+      return true;
+    } catch { return false; }
   };
 
   if (!v) return { found: false, clicked: clickPlayControl(), error: 0 };
