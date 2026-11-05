@@ -45,10 +45,10 @@ const PLAYBACK_PROBE = `(() => {
     try { el.click(); return true; } catch { return false; }
   };
 
-  if (!v) return { found: false, clicked: clickPlayControl() };
+  if (!v) return { found: false, clicked: clickPlayControl(), error: 0 };
 
   let clicked = false;
-  if (v.paused && (!window.__lumenLastPlayAttempt || Date.now() - window.__lumenLastPlayAttempt > 2500)) {
+  if (v.paused && (!window.__lumenLastPlayAttempt || Date.now() - window.__lumenLastPlayAttempt > 1800)) {
     window.__lumenLastPlayAttempt = Date.now();
     try {
       const p = v.play();
@@ -58,6 +58,7 @@ const PLAYBACK_PROBE = `(() => {
   }
 
   const playing = !v.paused && v.currentTime > 0.2;
+  const error = v.error ? Number(v.error.code) || 1 : 0;
   if (!window.__lumenPlaybackFill) {
     window.__lumenPlaybackFill = true;
     const box = v.closest('.jwplayer,.video-js,.plyr,.html5-video-player,.art-video-player,.dplayer,[class*="player" i]') || v;
@@ -67,7 +68,7 @@ const PLAYBACK_PROBE = `(() => {
     document.documentElement.style.setProperty('overflow','hidden','important');
     document.body && document.body.style.setProperty('overflow','hidden','important');
   }
-  return { found: true, playing, clicked, t: Number(v.currentTime)||0, d: Number(v.duration)||0, paused: !!v.paused };
+  return { found: true, playing, clicked, error, t: Number(v.currentTime)||0, d: Number(v.duration)||0, paused: !!v.paused };
 })()`;
 
 // Switch to the next recognisable host-provided source only after playback has failed/stalled.
@@ -80,11 +81,16 @@ const SOURCE_SWITCH_JS = `(() => {
   });
   const unique = [...new Set(els)];
   const labels = unique.map(el => (el.innerText || el.getAttribute('aria-label') || el.title || '').trim());
-  const current = unique.findIndex(el => el.getAttribute('aria-pressed') === 'true' || el.getAttribute('aria-selected') === 'true' || /active|selected|current/i.test(el.className || ''));
-  let index = Number(window.__lumenSourceIndex);
-  if (!Number.isInteger(index)) index = current;
-  if (!unique.length || index + 1 >= unique.length) return { switched:false, labels };
-  index++;
+  const current = unique.findIndex(el =>
+    el.getAttribute('aria-pressed') === 'true' ||
+    el.getAttribute('aria-selected') === 'true' ||
+    el.getAttribute('aria-current') === 'true' ||
+    /(^|\\s)(active|selected|current)(\\s|$)/i.test(String(el.className || ''))
+  );
+  // Never guess which source is active: that can switch away from a working stream.
+  if (!unique.length || current < 0) return { switched:false, labels, reason:'active source not identified' };
+  const index = current + 1;
+  if (index >= unique.length) return { switched:false, labels, reason:'no next source' };
   window.__lumenSourceIndex = index;
   unique[index].click();
   return { switched:true, label:labels[index], index, total:unique.length };
@@ -238,16 +244,16 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
             state.lastProgressAt = Date.now();
           }
           state.progress = { t: result.t, d: result.d, paused: result.paused, at: Date.now() };
-          // The page is revealed only once a real player is found. Its player surface is expanded
-          // to the whole window by PLAYBACK_PROBE, keeping the source site's layout out of view.
-          reveal();
+          // Keep the Lumen cover over the site until video playback actually starts.
+          // Finding a paused player is not enough: exposing it leaves the website visible.
+          if (result.playing) reveal();
           if (assist?.onProgress && Date.now() - state.lastProgressSaved >= 10000) { state.lastProgressSaved = Date.now(); assist.onProgress({ t: result.t, d: result.d }); }
           if (result.playing) state.stats.playing = true;
-          // If a source has no playable video, or a detected video makes no progress, try
-          // the next named source button (VidSync, VidFast, VidPlay, etc.) on that page.
-          const stalled = state.hasVideo && ((!state.stats.playing && Date.now() - state.startedAt > 18000) || (state.stats.playing && !result.paused && Date.now() - state.lastProgressAt > 18000));
-          const missing = !state.hasVideo && Date.now() - state.startedAt > 18000;
-          if ((stalled || missing) && state.sourceAttempts < 5 && Date.now() - state.lastSourceSwitchAt > 12000) {
+          // A paused player is not proof that its source is broken. Only fail over after
+          // an explicit media error, or a stream that was playing and then genuinely stalls.
+          const mediaError = Number(result.error) > 0;
+          const stalled = state.stats.playing && !result.paused && Date.now() - state.lastProgressAt > 30000;
+          if ((mediaError || stalled) && state.sourceAttempts < 5 && Date.now() - state.lastSourceSwitchAt > 10000) {
             const switched = await evaluate(SOURCE_SWITCH_JS, frame);
             if (switched?.switched) {
               state.sourceAttempts++;
@@ -257,23 +263,12 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
               state.hasVideo = false;
               state.playerFrame = null;
               state.resumeApplied = false;
+              state.stats.playing = false;
               state.stats.sourceSwitches = state.sourceAttempts;
-              log('[browser] trying alternate source: ' + switched.label);
+              log('[browser] trying alternate source after media failure: ' + switched.label);
             }
           }
           break;
-        } else if (Date.now() - state.startedAt > 18000 && state.sourceAttempts < 5 && Date.now() - state.lastSourceSwitchAt > 12000) {
-          const switched = await evaluate(SOURCE_SWITCH_JS, frame);
-          if (switched?.switched) {
-            state.sourceAttempts++;
-            state.lastSourceSwitchAt = Date.now();
-            state.lastProgressAt = Date.now();
-            state.hasVideo = false;
-            state.playerFrame = null;
-            state.resumeApplied = false;
-            state.stats.sourceSwitches = state.sourceAttempts;
-            log('[browser] trying alternate source: ' + switched.label);
-          }
         }
       }
     };
