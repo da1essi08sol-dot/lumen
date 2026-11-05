@@ -54,7 +54,7 @@ const autostartFromOld = process.argv.includes('--enable-autostart') || !!migrat
 // ---- updates
 const updater = require('./updater')({ app, pkg, log, broadcast: (m) => server?.broadcastTv(m) });
 
-let win = null, tray = null, quitting = false, port = null, server = null;
+let win = null, tray = null, quitting = false, port = null, server = null, playback = null;
 
 function tvDisplay() {
   const all = screen.getAllDisplays();
@@ -157,6 +157,11 @@ function quit() { quitting = true; app.quit(); }
 // ---- what the server can ask of the app (see server/index.js and server/system/index.js)
 global.lumenShell = {
   showTv, hideTv, quit,
+  openPlayback(opts) {
+    if (!playback) playback = require('./playback').createPlayback({ BrowserWindow, getBounds: () => tvDisplay().bounds, showTv, log });
+    return playback.open(opts);
+  },
+  closePlayback() { return playback?.close() || false; },
   serverReady(p) { port = p; log(`Lumen ${pkg.version} running on port ${p}`); createWindow(); updater.start(); },
   serverFailed(e) {
     log('server could not start:', e.code || e.message);
