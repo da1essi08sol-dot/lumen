@@ -142,7 +142,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
 
     const state = {
       win, label, url, closed: false, revealed: false, timer: null, poll: null,
-      progress: null, lastProgressSaved: 0, resumeApplied: false, playerFrame: null, hasVideo: false, lastVideoTime: 0, lastProgressAt: Date.now(), sourceAttempts: 0, lastSourceSwitchAt: 0, centreClickIndex: 0, lastCentreClickAt: 0, allowed: new Set([site(url)]), graceUntil: Date.now() + 10000,
+      progress: null, lastProgressSaved: 0, resumeApplied: false, playerFrame: null, hasVideo: false, lastVideoTime: 0, lastProgressAt: Date.now(), sourceAttempts: 0, lastSourceSwitchAt: 0, centreClickIndex: 0, lastCentreClickAt: 0, lastDomClickAt: 0, allowed: new Set([site(url)]), graceUntil: Date.now() + 10000,
       stats: { popups: 0, redirects: 0, playing: false }, pointer: { x: Math.round(bounds.width / 2), y: Math.round(bounds.height / 2) }
     };
     active = state;
@@ -253,7 +253,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
     const tryCentreClick = () => {
       if (state.closed || state.revealed || state.stats.playing) return false;
       const now = Date.now();
-      if (now - state.startedAt < 2500 || now - state.lastCentreClickAt < 1100) return false;
+      if (now - state.startedAt < 2500 || now - state.lastCentreClickAt < 1100 || now - state.lastDomClickAt < 1800) return false;
       if (state.centreClickIndex >= centreClickPoints.length) return false;
       const { width, height } = win.getContentBounds();
       const [dx, dy] = centreClickPoints[state.centreClickIndex++];
@@ -278,6 +278,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
       try { frames = win.webContents.mainFrame.framesInSubtree || [win.webContents.mainFrame]; } catch {}
       for (const frame of frames) {
         const result = await evaluate(PLAYBACK_PROBE, frame);
+        if (result?.clicked) state.lastDomClickAt = Date.now();
         if (state.closed) return;
         if (result?.found && result.d > 60) {
           state.playerFrame = frame;
