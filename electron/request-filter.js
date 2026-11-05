@@ -8,7 +8,7 @@ const BLOCKED_HOSTS = new Set([
   'ad-maven.com', 'pushground.com', 'mgid.com', 'criteo.com',
   'scorecardresearch.com', 'serving-sys.com', 'quantserve.com',
   'casalemedia.com', 'rubiconproject.com', 'pubmatic.com',
-  'openx.net', 'sharethrough.com', ' lijit.com'.trim(),
+  'openx.net', 'sharethrough.com', 'lijit.com',
   'smartadserver.com', 'adsafeprotected.com', 'moatads.com'
 ]);
 
