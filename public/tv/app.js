@@ -49,8 +49,8 @@ async function updateLumen() {
 async function updateApp() {
   ui.toast('Checking for a new version…', 'search');
   let u; try { u = await api('/api/update/check'); } catch (e) { return ui.toast(e.message, 'info'); }
-  if (!u.found) return ui.confirmDialog({ title: 'You’re up to date', text: `Lumen ${u.installed} is the newest version.${u.note ? ' ' + u.note : ''}`, ok: 'OK', cancel: 'Close' });
-  const ok = await ui.confirmDialog({ title: `Update to Lumen ${u.version}?`, text: `${u.source === 'github' ? 'It downloads now. ' : ''}Lumen closes for a few seconds, puts in the new version and opens again by itself. Your settings, folders, sign-ins and Continue Watching stay as they are.`, ok: 'Update Now' });
+  if (!u.found) return ui.confirmDialog({ title: 'You’re up to date', text: `Lumen ${u.installed} is the newest version. The built-in Lumen Browser is included in the same update.${u.note ? ' ' + u.note : ''}`, ok: 'OK', cancel: 'Close' });
+  const ok = await ui.confirmDialog({ title: `Update Lumen and Lumen Browser to ${u.version}?`, text: `${u.source === 'github' ? 'The update downloads now. ' : ''}Lumen closes for a few seconds, installs the new Lumen app and built-in browser together, then opens again by itself. Your settings, folders, browser sign-ins and Continue Watching stay as they are.`, ok: 'Update Now' });
   if (!ok) return;
   const x = introScene('bye up', `<p class="upd">Getting Lumen ${esc(u.version)} ready…</p>`);
   document.body.appendChild(x);
@@ -1075,13 +1075,13 @@ if (!onPhone())     item('Add an Ad-blocker Extension', icon('plus'), async () =
     if (cfg.app) {
       sec('This Computer');
       item('Start Lumen When I Sign In', tog(cfg.app.autostart), async () => { await api('/api/app', { method: 'POST', body: { autostart: !cfg.app.autostart } }).catch((e) => ui.toast(e.message, 'info')); }, 'Lumen opens on the TV whenever this computer starts');
-      item('Updates', cfg.app.updates?.github ? 'Automatic' : 'From Downloads', null, cfg.app.updates?.github ? 'Lumen checks for new versions every few hours and tells you here' : 'Put a new Lumen installer in Downloads, then press Update Lumen');
+      item('Updates', cfg.app.updates?.github ? 'Automatic' : 'From Downloads', null, cfg.app.updates?.github ? 'Lumen and its built-in Browser update together. Lumen checks for new versions every few hours and tells you here' : 'Put a new Lumen installer in Downloads, then press Update Lumen. The built-in Browser is included in that update');
     }
     if (window.LUMEN_WEB && !window.LumenBox && touchy()) { sec('This Phone'); item('Use the Phone Layout', icon('remote'), () => { try { localStorage.setItem('lumen.look', 'phone'); } catch {} location.href = '../?phone'; }, 'The upright, touch-first layout. You can come back to the TV look from its Settings'); }
     sec('About');
     item('Recently Viewed', 'Clear', async () => { const ok = await ui.confirmDialog({ title: 'Clear recently viewed?', text: 'Your folders are not affected.', ok: 'Clear', danger: true }); if (ok) { await api('/api/recent', { method: 'DELETE' }); invalidate('section:home'); ui.toast('Cleared'); } });
 if (!onPhone())     item('System', esc(`${cfg.system?.platform || '?'} · volume ${cfg.system?.helper ? 'ready' : 'starting'} · VLC ${cfg.system?.vlc ? 'found' : 'not installed'}`), null);
-if (!onPhone())     item('Update Lumen', icon('download') || 'Check', updateLumen, cfg.app ? 'Checks for a new version now. Your settings are kept' : 'Download the new Lumen-TV.zip on this laptop, then press here — your settings are kept');
+if (!onPhone())     item('Update Lumen', icon('download') || 'Check', updateLumen, cfg.app ? 'Checks for Lumen and its built-in Browser together. Your settings are kept' : 'Download the new Lumen-TV.zip on this laptop, then press here — your settings are kept');
     item('Privacy', 'Read', () => ui.confirmDialog({ title: 'Lumen and your privacy', text: 'Lumen has no account, adverts, analytics or tracking, and sets no cookies. Your settings, folders, Continue Watching and paired phones stay on this computer. Lumen only contacts TMDB (film details and posters), GitHub (updates), YouTube (trailers) and the websites you open. The full details are in PRIVACY.md on Lumen’s GitHub page.', ok: 'OK', cancel: 'Close' }), 'What Lumen keeps, and who it talks to');
     item('Lumen', `Version ${esc(cfg.version || '1.0')}`, null, 'Film data from TMDB. This product uses the TMDB API but is not endorsed or certified by TMDB.');
     box.appendChild(list);
