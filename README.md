@@ -41,6 +41,7 @@ Each phone needs its own free TMDB key; Lumen asks for it the first time and sho
 
 Lumen checks for a new version every few hours. When there is one, the TV shows a note: go to **Settings › Update Lumen**
 and press **Update Now**. Lumen downloads it, closes for a few seconds and opens again on the new version.
+The dedicated Windows Lumen Browser is part of the desktop app, not a separate download: every Lumen installer contains the matching browser engine, so this same update installs both together. Your settings, browser session data and Continue Watching are kept.
 You can also put a `Lumen-Setup-<version>.exe` in your Downloads folder; Lumen spots it the same way.
 
 ## The tray icon
