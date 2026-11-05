@@ -129,7 +129,7 @@ Settings → Watch Button → **Software Video Decoding** (off by default) is a 
 
 ## Sign-ins are remembered
 
-On Windows, Watch websites open in Lumen's own full-screen Chromium playback window, with a persistent, separate Lumen browser session. You sign in to each service once in that session. Closing playback returns to Lumen TV and keeps the session for next time. The previous Brave/Edge profiles are left untouched; you may need to sign in once again in the new Lumen Browser session.
+On Windows, Watch websites open in Lumen's own fullscreen/kiosk Chromium playback window, with a persistent, separate Lumen browser session. The player surface is expanded to fill the screen; Lumen attempts autoplay and, if playback is missing or stalls, tries up to five clearly labelled alternate source buttons (for example VidSync or VidFast) when the site exposes them. This is best-effort: site-specific players, DRM and custom source controls may still require manual action. Press **Esc** or use **Back** on the remote to close playback and return to Lumen TV. You sign in to each service once in that session. The previous Brave/Edge profiles are left untouched; you may need to sign in once again in the new Lumen Browser session.
 
 ## Closing Lumen
 
