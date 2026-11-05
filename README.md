@@ -129,7 +129,7 @@ Settings → Watch Button → **Software Video Decoding** (off by default) is a 
 
 ## Sign-ins are remembered
 
-Every website (BBC iPlayer, Channel 4, ITVX, your Watch site…) opens in the same browser (Brave if it's installed, otherwise Edge), so you sign in once. When you press Home, Lumen closes the browser properly so it saves your sign-ins first; a forced close could lose a sign-in you'd just made. Sign-ins are kept in Lumen's data folder (tray icon › Open Lumen's data folder).
+On Windows, Watch websites open in Lumen's own full-screen Chromium playback window, with a persistent, separate Lumen browser session. You sign in to each service once in that session. Closing playback returns to Lumen TV and keeps the session for next time. The previous Brave/Edge profiles are left untouched; you may need to sign in once again in the new Lumen Browser session.
 
 ## Closing Lumen
 
@@ -164,8 +164,7 @@ If a site's player doesn't start by itself after about 20 seconds, the loading s
 The loading screen shows the film's artwork, a diagonal LumenTV pattern, the LumenTV logo and what's happening ("Finding the film", "Pressing play").
 Website tiles get the same pop-up blocking and loading screen.
 
-**Ad-blocker extension:** Lumen's Brave is separate from your own Brave, so your extensions aren't in it.
-Settings → Watch Button → **Add an Ad-blocker Extension** opens Lumen's Brave in a normal window on the extension store. Install the same blocker you use, then press Home. It stays installed.
+**Ad blocking:** Lumen Browser blocks pop-up windows and a built-in list of common advertising and tracking domains. This is a lightweight built-in filter, not a full EasyList-compatible extension; some adverts may still appear.
 
 
 ## Phone remote
