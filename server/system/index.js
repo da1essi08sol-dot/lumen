@@ -64,10 +64,10 @@ class WindowsSystem extends EventEmitter {
   stepVolume(d) { return this.cmd(`VOLSTEP ${d.toFixed(3)}`); }
   toggleMute() { return this.cmd('MUTE'); }
   setBrightness(pct) { return this.cmd(`BRIGHT ${Math.round(pct)}`); } // backlight over DDC/CI; {screens: n}
-  key(k) { return this.cmd(`KEY ${k}`); }
-  type(text) { return this.cmd(`TYPE ${Buffer.from(text, 'utf8').toString('base64')}`); }
-  mouseMove(dx, dy) { return this.cmd(`MOVE ${Math.round(dx)} ${Math.round(dy)}`); }
-  click(b) { return this.cmd(`CLICK ${b === 'right' ? 'right' : 'left'}`); }
+  key(k) { if (this.external?.guard?.key) return this.external.guard.key(k); return this.cmd(`KEY ${k}`); }
+  type(text) { if (this.external?.guard?.type) return this.external.guard.type(text); return this.cmd(`TYPE ${Buffer.from(text, 'utf8').toString('base64')}`); }
+  mouseMove(dx, dy) { if (this.external?.guard?.mouseMove) return this.external.guard.mouseMove(dx, dy); return this.cmd(`MOVE ${Math.round(dx)} ${Math.round(dy)}`); }
+  click(b) { if (this.external?.guard?.click) return this.external.guard.click(b === 'right' ? 'right' : 'left'); return this.cmd(`CLICK ${b === 'right' ? 'right' : 'left'}`); }
   scroll(dy) { return this.cmd(`SCROLL ${Math.round(dy)}`); }
   focusTv() { return this.cmd('FOCUS Lumen').catch(() => {}); }
   screenOff() { return this.cmd('SCREENOFF').catch(() => {}); }
