@@ -142,7 +142,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
 
     const state = {
       win, label, url, closed: false, revealed: false, timer: null, poll: null,
-      progress: null, lastProgressSaved: 0, resumeApplied: false, playerFrame: null, hasVideo: false, lastVideoTime: 0, lastProgressAt: Date.now(), sourceAttempts: 0, lastSourceSwitchAt: 0, allowed: new Set([site(url)]), graceUntil: Date.now() + 10000,
+      progress: null, lastProgressSaved: 0, resumeApplied: false, playerFrame: null, hasVideo: false, lastVideoTime: 0, lastProgressAt: Date.now(), sourceAttempts: 0, lastSourceSwitchAt: 0, centreClickIndex: 0, lastCentreClickAt: 0, allowed: new Set([site(url)]), graceUntil: Date.now() + 10000,
       stats: { popups: 0, redirects: 0, playing: false }, pointer: { x: Math.round(bounds.width / 2), y: Math.round(bounds.height / 2) }
     };
     active = state;
@@ -241,6 +241,37 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
         child = parent;
       }
     };
+    // Fallback for players whose Play control cannot be identified from their DOM.
+    // Electron input events target the actual webContents (including embedded frames),
+    // unlike page-script .click() calls which some custom players ignore.
+    const centreClickPoints = [
+      [0, 0],
+      [-70, 0], [70, 0], [0, -70], [0, 70],
+      [-120, 0], [120, 0], [0, -120], [0, 120],
+      [-70, -70], [70, -70], [-70, 70], [70, 70]
+    ];
+    const tryCentreClick = () => {
+      if (state.closed || state.revealed || state.stats.playing) return false;
+      const now = Date.now();
+      if (now - state.startedAt < 2500 || now - state.lastCentreClickAt < 1100) return false;
+      if (state.centreClickIndex >= centreClickPoints.length) return false;
+      const { width, height } = win.getContentBounds();
+      const [dx, dy] = centreClickPoints[state.centreClickIndex++];
+      const x = Math.max(1, Math.min(width - 2, Math.round(width / 2 + dx)));
+      const y = Math.max(1, Math.min(height - 2, Math.round(height / 2 + dy)));
+      state.lastCentreClickAt = now;
+      try {
+        win.webContents.sendInputEvent({ type: 'mouseMove', x, y });
+        win.webContents.sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1 });
+        win.webContents.sendInputEvent({ type: 'mouseUp', x, y, button: 'left', clickCount: 1 });
+        log('[browser] tried centre Play click ' + state.centreClickIndex + '/' + centreClickPoints.length + ' at ' + x + ',' + y);
+        return true;
+      } catch (e) {
+        log('[browser] centre Play click failed: ' + e.message);
+        return false;
+      }
+    };
+
     const poll = async () => {
       if (state.closed || win.isDestroyed()) return;
       let frames = [];
@@ -264,7 +295,10 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
           state.progress = { t: result.t, d: result.d, paused: result.paused, at: Date.now() };
           // Keep the Lumen cover over the site until video playback actually starts.
           // Finding a paused player is not enough: exposing it leaves the website visible.
-          if (result.playing) reveal();
+          if (result.playing) {
+            state.stats.playing = true;
+            reveal();
+          }
           if (assist?.onProgress && Date.now() - state.lastProgressSaved >= 10000) { state.lastProgressSaved = Date.now(); assist.onProgress({ t: result.t, d: result.d }); }
           if (result.playing) state.stats.playing = true;
           // A paused player is not proof that its source is broken. Only fail over after
@@ -289,6 +323,9 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
           break;
         }
       }
+      // Sweep a small area around the centre only while playback has not started.
+      // Stop on the first confirmed playing state; never click over an active film.
+      tryCentreClick();
     };
     state.startedAt = Date.now();
     state.poll = setInterval(poll, 1500);
