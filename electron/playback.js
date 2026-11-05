@@ -8,14 +8,55 @@ const { site } = require('../server/system/guard');
 const { isBlockedRequest } = require('./request-filter');
 
 const PLAYBACK_PROBE = `(() => {
+  const visible = el => !!(el && el.getClientRects().length && getComputedStyle(el).visibility !== 'hidden' && getComputedStyle(el).display !== 'none');
   const videos = [...document.querySelectorAll('video')].filter(v => (v.duration || 0) > 60);
   const v = videos.sort((a,b) => (b.currentTime || 0) - (a.currentTime || 0))[0] || document.querySelector('video');
-  if (!v) {
-    const selectors = ['.jw-display-icon-display','.jw-icon-display','.vjs-big-play-button','.plyr__control--overlaid','.fp-play','.play-button','.play-btn','button[aria-label*="play" i]','[class*="big-play" i]'];
-    if (!window.__lumenNoVideoClickAttempted) { window.__lumenNoVideoClickAttempted = true; for (const s of selectors) { const el = document.querySelector(s); if (el && el.getClientRects().length) { try { el.click(); } catch {} break; } } }
-    return { found: false };
+
+  // Streaming sites use many different player skins. Prefer explicit player controls,
+  // then fall back to a visible, clearly-labelled play button.
+  const findPlayControl = () => {
+    const selectors = [
+      '.jw-display-icon-container','.jw-icon-play','.jw-icon-display','.jw-display',
+      '.vjs-big-play-button','.vjs-play-control','.plyr__control--overlaid',
+      '.plyr__control[data-plyr="play"]','.fp-play','.fp-ui','.dplayer-play-icon',
+      '.artplayer-app .art-control-play','.play-button','.play-btn',
+      'button[aria-label*="play" i]','[role="button"][aria-label*="play" i]',
+      '[title*="play" i]','[data-testid*="play" i]',
+      'button[class*="play" i]','[class*="big-play" i]'
+    ];
+    for (const selector of selectors) {
+      const el = [...document.querySelectorAll(selector)].find(visible);
+      if (el && !el.disabled) return el;
+    }
+    const candidates = [...document.querySelectorAll('button,[role="button"],a,div,span')].filter(visible);
+    return candidates.find(el => {
+      if (el.disabled || el.closest('[aria-hidden="true"]')) return false;
+      const label = [el.innerText, el.getAttribute('aria-label'), el.getAttribute('title'), el.className]
+        .filter(x => typeof x === 'string').join(' ').trim();
+      if (!label || label.length > 90 || /playlist|playback.?rate|display/i.test(label)) return false;
+      return /(^|\\W)(play|start|resume|watch)(\\W|$)|big.?play|play.?button/i.test(label);
+    }) || null;
+  };
+  const clickPlayControl = () => {
+    if (Date.now() - (window.__lumenLastUiPlayAttempt || 0) < 2500) return false;
+    const el = findPlayControl();
+    if (!el) return false;
+    window.__lumenLastUiPlayAttempt = Date.now();
+    try { el.click(); return true; } catch { return false; }
+  };
+
+  if (!v) return { found: false, clicked: clickPlayControl() };
+
+  let clicked = false;
+  if (v.paused && (!window.__lumenLastPlayAttempt || Date.now() - window.__lumenLastPlayAttempt > 2500)) {
+    window.__lumenLastPlayAttempt = Date.now();
+    try {
+      const p = v.play();
+      if (p && p.catch) p.catch(() => {});
+    } catch {}
+    clicked = clickPlayControl();
   }
-  if (v.paused && (!window.__lumenLastPlayAttempt || Date.now() - window.__lumenLastPlayAttempt > 5000)) { window.__lumenLastPlayAttempt = Date.now(); try { const p = v.play(); if (p && p.catch) p.catch(() => {}); } catch {} }
+
   const playing = !v.paused && v.currentTime > 0.2;
   if (!window.__lumenPlaybackFill) {
     window.__lumenPlaybackFill = true;
@@ -26,7 +67,7 @@ const PLAYBACK_PROBE = `(() => {
     document.documentElement.style.setProperty('overflow','hidden','important');
     document.body && document.body.style.setProperty('overflow','hidden','important');
   }
-  return { found: true, playing, t: Number(v.currentTime)||0, d: Number(v.duration)||0, paused: !!v.paused };
+  return { found: true, playing, clicked, t: Number(v.currentTime)||0, d: Number(v.duration)||0, paused: !!v.paused };
 })()`;
 
 // Switch to the next recognisable host-provided source only after playback has failed/stalled.
@@ -270,6 +311,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
       saveCurrent: async () => win.isDestroyed() ? null : win.webContents.getURL(),
       key: async (key) => {
         if (win.isDestroyed()) return false;
+        if (String(key).toLowerCase() === 'home' || String(key).toLowerCase() === 'browserhome') { close(); return true; }
         if (key === 'browserback') { if (win.webContents.canGoBack()) win.webContents.goBack(); return true; }
         if (key === 'mediaplaypause') return controller.control('toggle');
         const map = { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', enter: 'Enter', escape: 'Escape', space: ' ', backspace: 'Backspace', tab: 'Tab', f11: 'F11', altleft: 'Alt+ArrowLeft', altright: 'Alt+ArrowRight' };
