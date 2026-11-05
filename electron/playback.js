@@ -29,7 +29,25 @@ const PLAYBACK_PROBE = `(() => {
   return { found: true, playing, t: Number(v.currentTime)||0, d: Number(v.duration)||0, paused: !!v.paused };
 })()`;
 
-const STATUS_JS = `(() => { const v=[...document.querySelectorAll('video')].filter(x=>(x.duration||0)>60).sort((a,b)=>b.currentTime-a.currentTime)[0]; return v?{t:v.currentTime,d:v.duration,paused:v.paused}:null; })()`;
+// Switch to the next recognisable host-provided source only after playback has failed/stalled.
+const SOURCE_SWITCH_JS = `(() => {
+  const names = /vidsync|vidfast|vidplay|vidsrc|filemoon|streamtape|upcloud|voe|doodstream|mixdrop|streamwish|vidhide|vidcloud|closeload|streamhub/i;
+  const els = [...document.querySelectorAll('button,a,[role="button"],li,div')].filter(el => {
+    if (!el.getClientRects().length) return false;
+    const t = (el.innerText || el.getAttribute('aria-label') || el.title || '').trim();
+    return t && t.length < 70 && names.test(t) && !el.querySelector('button,a,[role="button"]');
+  });
+  const unique = [...new Set(els)];
+  const labels = unique.map(el => (el.innerText || el.getAttribute('aria-label') || el.title || '').trim());
+  const current = unique.findIndex(el => el.getAttribute('aria-pressed') === 'true' || el.getAttribute('aria-selected') === 'true' || /active|selected|current/i.test(el.className || ''));
+  let index = Number(window.__lumenSourceIndex);
+  if (!Number.isInteger(index)) index = Math.max(0, current);
+  if (!unique.length || index + 1 >= unique.length) return { switched:false, labels };
+  index++;
+  window.__lumenSourceIndex = index;
+  unique[index].click();
+  return { switched:true, label:labels[index], index, total:unique.length };
+})()`;
 
 function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
   let active = null;
@@ -46,7 +64,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
     const bounds = getBounds();
     const win = new BrowserWindow({
       x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height,
-      fullscreen: true, frame: false, show: false, backgroundColor: '#000000',
+      fullscreen: true, kiosk: true, frame: false, show: false, backgroundColor: '#000000',
       autoHideMenuBar: true, skipTaskbar: true,
       webPreferences: {
         partition: 'persist:lumen-watch', contextIsolation: true, sandbox: true,
@@ -59,7 +77,7 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
 
     const state = {
       win, label, url, closed: false, revealed: false, timer: null, poll: null,
-      progress: null, lastProgressSaved: 0, resumeApplied: false, playerFrame: null, hasVideo: false, allowed: new Set([site(url)]), graceUntil: Date.now() + 10000,
+      progress: null, lastProgressSaved: 0, resumeApplied: false, playerFrame: null, hasVideo: false, lastVideoTime: 0, lastProgressAt: Date.now(), sourceAttempts: 0, lastSourceSwitchAt: 0, allowed: new Set([site(url)]), graceUntil: Date.now() + 10000,
       stats: { popups: 0, redirects: 0, playing: false }, pointer: { x: Math.round(bounds.width / 2), y: Math.round(bounds.height / 2) }
     };
     active = state;
@@ -118,6 +136,14 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
     win.webContents.on('will-navigate', (event, target) => allowNavigation(event, target));
     win.webContents.on('will-redirect', (event, target) => allowNavigation(event, target));
     win.webContents.on('will-prevent-unload', (event) => event.preventDefault());
+    // Escape is the universal Lumen Back action. Never leave the viewer trapped in a site.
+    win.webContents.on('before-input-event', (event, input) => {
+      if (input.type !== 'keyDown') return;
+      if (input.key === 'Escape' || (input.key === 'F11' && input.control)) {
+        event.preventDefault();
+        close();
+      }
+    });
     win.on('closed', close);
 
     const evaluate = (js, frame = null) => {
@@ -140,15 +166,50 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
             const resumeAt = Math.max(0, Number(assist?.resumeAt) || 0);
             if (resumeAt > 60) await evaluate('(function(){const v=[...document.querySelectorAll(\'video\')].filter(x=>(x.duration||0)>60).sort((a,b)=>b.currentTime-a.currentTime)[0];if(v&&v.currentTime<'+resumeAt+'-30){v.currentTime=Math.min(v.duration-1,'+resumeAt+');return true}return false})()', frame);
           }
+          if (Number(result.t) > state.lastVideoTime + 0.35) {
+            state.lastVideoTime = Number(result.t);
+            state.lastProgressAt = Date.now();
+          }
           state.progress = { t: result.t, d: result.d, paused: result.paused, at: Date.now() };
+          // The page is revealed only once a real player is found. Its player surface is expanded
+          // to the whole window by PLAYBACK_PROBE, keeping the source site's layout out of view.
+          reveal();
           if (assist?.onProgress && Date.now() - state.lastProgressSaved >= 10000) { state.lastProgressSaved = Date.now(); assist.onProgress({ t: result.t, d: result.d }); }
-          if (result.playing) { state.stats.playing = true; reveal(); }
+          if (result.playing) state.stats.playing = true;
+          // If a source has no playable video, or a detected video makes no progress, try
+          // the next named source button (VidSync, VidFast, VidPlay, etc.) on that page.
+          const stalled = state.hasVideo && !result.paused && Date.now() - state.lastProgressAt > 18000;
+          const missing = !state.hasVideo && Date.now() - state.startedAt > 18000;
+          if ((stalled || missing) && state.sourceAttempts < 5 && Date.now() - state.lastSourceSwitchAt > 12000) {
+            const switched = await evaluate(SOURCE_SWITCH_JS, frame);
+            if (switched?.switched) {
+              state.sourceAttempts++;
+              state.lastSourceSwitchAt = Date.now();
+              state.lastProgressAt = Date.now();
+              state.lastVideoTime = 0;
+              state.hasVideo = false;
+              state.playerFrame = null;
+              state.resumeApplied = false;
+              state.stats.sourceSwitches = state.sourceAttempts;
+              log('[browser] trying alternate source: ' + switched.label);
+            }
+          }
           break;
         }
       }
     };
+    state.startedAt = Date.now();
     state.poll = setInterval(poll, 1500);
-    state.timer = setTimeout(reveal, 25000);
+    // Do not expose the raw website after a timeout; keep the Lumen cover in place
+    // until a player is detected, while still allowing Escape/remote Back to close it.
+    state.timer = setTimeout(() => {
+      if (state.closed || state.hasVideo) return;
+      try {
+        if (!cover.isDestroyed()) cover.webContents.executeJavaScript(
+          "document.querySelector('p').textContent='Still searching for a working video source… Press Esc to return to Lumen.'"
+        ).catch(() => {});
+      } catch {}
+    }, 30000);
     win.webContents.on('did-finish-load', () => { if (youtube) reveal(); poll(); });
     win.webContents.on('render-process-gone', (_e, details) => { log('[browser] renderer exited: ' + details.reason); close(); });
     win.webContents.on('did-fail-load', (_e, code, description, failedUrl, isMainFrame) => {
