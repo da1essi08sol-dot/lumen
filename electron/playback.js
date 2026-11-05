@@ -292,16 +292,16 @@ function createPlayback({ BrowserWindow, getBounds, showTv, log = () => {} }) {
     };
     state.startedAt = Date.now();
     state.poll = setInterval(poll, 1500);
-    // Do not expose the raw website after a timeout; keep the Lumen cover in place
-    // until a player is detected, while still allowing Escape/remote Back to close it.
+    // Keep the website hidden until playback actually starts. If a player is found
+    // but remains paused, explain what is happening instead of leaving a blank spinner.
     state.timer = setTimeout(() => {
-      if (state.closed || state.hasVideo) return;
+      if (state.closed || state.revealed) return;
       try {
         if (!cover.isDestroyed()) cover.webContents.executeJavaScript(
-          "document.querySelector('p').textContent='Still searching for a working video source… Press Esc to return to Lumen.'"
+          "document.querySelector('p').textContent='The player has not started yet. Lumen is still trying Play. Press OK to retry, or Back to return.'"
         ).catch(() => {});
       } catch {}
-    }, 30000);
+    }, 12000);
     win.webContents.on('did-finish-load', () => { if (youtube) reveal(); poll(); });
     win.webContents.on('render-process-gone', (_e, details) => { log('[browser] renderer exited: ' + details.reason); close(); });
     win.webContents.on('did-fail-load', (_e, code, description, failedUrl, isMainFrame) => {
